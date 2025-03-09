@@ -1,4 +1,4 @@
-from process_csv import read_and_return, df_test
+from process_csv import read_and_return, df_test, read_and_return_with_loc
 import networkx as nx
 import heapq
 class A_Star():
@@ -9,6 +9,7 @@ class A_Star():
     def heuristic_optimal(self, node, target):
         return nx.shortest_path_length(self.graph, source=node, target=target, weight='weight')
     
+    # tu trzeba dodatkow pozyskać współrzędne z wierzchołków
     def heuristic_euclidean(self, node, target):
         pos = nx.get_node_attributes(self.graph, 'pos')
         x1, y1 = pos[node]
@@ -65,7 +66,7 @@ class A_Star():
         return all_paths
     
 if __name__ == '__main__':
-    G = read_and_return(df_test)
+    G = read_and_return_with_loc(df_test)
     a_star = A_Star(G)
     print(a_star.shortest_path_a_star('Czajkowskiego', 'Krucza', a_star.heuristic_optimal))
     print(a_star.shortest_path_a_star('Czajkowskiego', 'Krucza', a_star.heuristic_euclidean))
