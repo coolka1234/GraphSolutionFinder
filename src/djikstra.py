@@ -27,19 +27,48 @@ class Djikstra():
         dist = {node: float('inf') for node in self.graph.nodes}
         dist[start] = 0
         pred = {node: [] for node in self.graph.nodes}
+        self.visited = set()
+
         while len(self.visited) < len(self.graph.nodes):
             node = self._min_distance(dist)
             self.visited.add(node)
             print(f"Visited: {node} at distance {dist[node]}")
+
             for neighbor in self.graph.neighbors(node):
                 if neighbor not in self.visited:
                     new_dist = dist[node] + self.graph[node][neighbor]['weight']
                     if new_dist < dist[neighbor]:
                         dist[neighbor] = new_dist
-                        pred[neighbor] = [node]
+                        pred[neighbor] = [node]  
                     elif new_dist == dist[neighbor]:
-                        pred[neighbor].append(node)
-        return dist[end], pred[end]
+                        pred[neighbor].append(node)  
+
+        paths = self.reconstruct_paths(pred, start, end)
+        
+        return dist[end], paths
+
+    
+    def reconstruct_paths(self, pred, start, end, path=None, all_paths=None):
+        if path is None:
+            path = [end]
+        if all_paths is None:
+            all_paths = []
+
+        if end == start:
+            all_paths.append(path[::-1]) 
+            return all_paths
+
+        for predecessor in pred[end]:
+            self.reconstruct_paths(pred, start, predecessor, path + [predecessor], all_paths)
+
+        return all_paths
+
+    
+    def deconstruct_path(self, pred, start, end):
+        path = deque([end])
+        while path[0] != start:
+            path.appendleft(pred[path[0]][0])
+        return path
     
     def _min_distance(self, dist):
         min_dist = float('inf')
@@ -101,4 +130,4 @@ if __name__=='__main__':
     djikstra = Djikstra(G)
     # print(djikstra.multi_source_dijkstra(G,'Czajkowskiego', target='Krucza'))
     # print(djikstra.shortest_path('Czajkowskiego', 'Krucza'))
-    print(djikstra.shortest_path_with_path('Czajkowskiego', 'Krucza'))
+    print((djikstra.shortest_path_with_path('Czajkowskiego', 'Krucza')[1], 'Czajkowskiego', 'Krucza'))
