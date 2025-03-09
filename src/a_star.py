@@ -19,7 +19,7 @@ class A_Star():
         line = nx.get_node_attributes(self.graph, 'line') 
         line1=line[node]
         line2= line[target]
-        return 1 if line1==line2 else 0
+        return 0 if line1==line2 else 1
     
     def shortest_path_a_star_line_change(self, start, end, heuristic):
         self.heuristic = heuristic
@@ -57,12 +57,9 @@ class A_Star():
         self.heuristic = heuristic
         pq = []  
         heapq.heappush(pq, (0, start))  
-        
         dist = {node: float('inf') for node in self.graph.nodes}
         dist[start] = 0
-        
         pred = {node: [] for node in self.graph.nodes}
-        
         while pq:
             _, node = heapq.heappop(pq)  
             
@@ -82,7 +79,7 @@ class A_Star():
                     pred[neighbor].append(node)
         
         paths = self.reconstruct_paths(pred, start, end)
-        return dist[end], paths
+        return dist[end], paths, len(paths[1])
 
     def reconstruct_paths(self, pred, start, end, path=None, all_paths=None):
         """Recursively reconstructs paths from start to end."""
