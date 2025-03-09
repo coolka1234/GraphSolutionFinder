@@ -5,15 +5,20 @@ import matplotlib.pyplot as plt
 
 df_connection_graph=pd.read_csv('data/connection_graph.csv')
 df_test=df_connection_graph.head(1000)
-
 G=nx.Graph()
 
+
 def convert_time(time_str):
-    if time_str.startswith("24:"):
-        return "00:" + time_str[3:]
-    elif time_str.startswith("25:"):
-        return "01:" + time_str[3:]
-    return time_str
+    if time_str[0]=='2':
+        return "0"+time_str[1:]
+    elif time_str[0]=='3':
+        return "1"+time_str[1:]
+    elif time_str[0]=='4':
+        return "2"+time_str[1:]
+    elif time_str[0]=='5':
+        return "3"+time_str[1:]
+    else:
+        return time_str
 
 def read_and_visualize(data_frame):
     for _, row in data_frame.iterrows():

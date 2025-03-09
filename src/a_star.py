@@ -79,7 +79,7 @@ class A_Star():
                     pred[neighbor].append(node)
         
         paths = self.reconstruct_paths(pred, start, end)
-        return dist[end], paths, len(paths[1])
+        return dist[end], len(paths[1])
 
     def reconstruct_paths(self, pred, start, end, path=None, all_paths=None):
         """Recursively reconstructs paths from start to end."""
@@ -101,5 +101,5 @@ if __name__ == '__main__':
     G = read_and_return_with_loc_and_line(df_test)
     a_star = A_Star(G)
     # print(a_star.shortest_path_a_star('Czajkowskiego', 'Krucza', a_star.heuristic_optimal))
-    # print(a_star.shortest_path_a_star('Czajkowskiego', 'Krucza', a_star.heuristic_euclidean))
-    print(a_star.shortest_path_a_star_line_change('Czajkowskiego', 'Krucza', a_star.heuristic_line_change))
+    print(a_star.shortest_path_a_star('Czajkowskiego', 'Gagarina', a_star.heuristic_euclidean))
+    # print(a_star.shortest_path_a_star_line_change('Czajkowskiego', 'Gagarina', a_star.heuristic_line_change))

@@ -3,7 +3,7 @@ import itertools
 import networkx as nx
 
 class TabuSearch:
-    def __init__(self, graph, cost_type="time", tabu_tenure=5, max_iterations=100):
+    def __init__(self, graph, cost_type="weight", tabu_tenure=5, max_iterations=100):
         """
         Algorytm Tabu Search dla problemu najkrótszej trasy przez przystanki.
         
@@ -13,13 +13,17 @@ class TabuSearch:
         :param max_iterations: Maksymalna liczba iteracji algorytmu
         """
         self.graph = graph
-        self.cost_type = cost_type
+        self.cost = self.cost_weight if cost_type == "weight" else self.line_cost
         self.tabu_tenure = tabu_tenure
         self.max_iterations = max_iterations
-
-    def cost(self, path):
+    # nie zadziala dla time, bo nie ma takiego klucza w grafie, jest weight
+    def cost_weight(self, path):
         """Oblicza koszt trasy w zależności od wybranego kryterium."""
-        return sum(self.graph[path[i]][path[i+1]][self.cost_type] for i in range(len(path)-1))
+        return sum(self.graph[path[i]][path[i+1]]['weight'] for i in range(len(path)-1))
+    
+    def line_cost(self, path):
+        """Oblicza koszt trasy w zależności od liczby przesiadek."""
+        return sum(1 for i in range(len(path)-1) if self.graph[path[i]][path[i+1]]['line'] != self.graph[path[i+1]][path[i+2]]['line'])
 
     def generate_neighbors(self, path):
         """Generuje sąsiednie rozwiązania przez zamianę dwóch losowych węzłów (swap)."""
@@ -59,4 +63,12 @@ class TabuSearch:
 
             iteration += 1
 
-        return best_path, best_cost 
+        return best_path, best_cost
+    
+if __name__=='__main__':
+    from process_csv import read_and_return_with_loc_and_line, df_test
+    G = read_and_return_with_loc_and_line(df_test)
+    ts = TabuSearch(G, cost_type="transfers", tabu_tenure=5, max_iterations=100)
+    result=ts.tabu_search('Czajkowskiego', ['Stanki', 'Poprzeczna', 'Paprocka'])
+    print(result)
+
