@@ -32,12 +32,14 @@ def read_and_return(data_frame):
             - datetime.strptime(convert_time(row['arrival_time']), '%H:%M:%S')).seconds // 60))
     return G
 
-def read_and_return_with_loc(data_frame):
+def read_and_return_with_loc_and_line(data_frame):
     for _, row in data_frame.iterrows():
         G.add_edge(row['start_stop'], row['end_stop'], weight=((datetime.strptime(convert_time(row['departure_time']), '%H:%M:%S')
             - datetime.strptime(convert_time(row['arrival_time']), '%H:%M:%S')).seconds // 60))
         G.add_node(row['start_stop'], pos=(row['start_stop_lat'], row['start_stop_lon']))
         G.add_node(row['end_stop'], pos=(row['end_stop_lat'], row['end_stop_lon']))
+        G.add_node(row['start_stop'], line=row['line'])
+        G.add_node(row['end_stop'], line=row['line'])
     return G
 
 if __name__ == '__main__':
