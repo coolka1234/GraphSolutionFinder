@@ -23,6 +23,24 @@ class Djikstra():
                         dist[neighbor] = new_dist
         return dist[end]
     
+    def shortest_path_with_path(self, start: str, end: str):
+        dist = {node: float('inf') for node in self.graph.nodes}
+        dist[start] = 0
+        pred = {node: [] for node in self.graph.nodes}
+        while len(self.visited) < len(self.graph.nodes):
+            node = self._min_distance(dist)
+            self.visited.add(node)
+            print(f"Visited: {node} at distance {dist[node]}")
+            for neighbor in self.graph.neighbors(node):
+                if neighbor not in self.visited:
+                    new_dist = dist[node] + self.graph[node][neighbor]['weight']
+                    if new_dist < dist[neighbor]:
+                        dist[neighbor] = new_dist
+                        pred[neighbor] = [node]
+                    elif new_dist == dist[neighbor]:
+                        pred[neighbor].append(node)
+        return dist[end], pred[end]
+    
     def _min_distance(self, dist):
         min_dist = float('inf')
         min_node = None
@@ -82,4 +100,5 @@ if __name__=='__main__':
     G = read_and_return(df_test)
     djikstra = Djikstra(G)
     # print(djikstra.multi_source_dijkstra(G,'Czajkowskiego', target='Krucza'))
-    print(djikstra.shortest_path('Czajkowskiego', 'Krucza'))
+    # print(djikstra.shortest_path('Czajkowskiego', 'Krucza'))
+    print(djikstra.shortest_path_with_path('Czajkowskiego', 'Krucza'))
