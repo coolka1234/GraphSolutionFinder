@@ -32,6 +32,7 @@ class Djikstra():
         while len(self.visited) < len(self.graph.nodes):
             node = self._min_distance(dist)
             self.visited.add(node)
+            print(f"dists: {dist} at node {node}")
             print(f"Visited: {node} at distance {dist[node]}")
 
             for neighbor in self.graph.neighbors(node):
@@ -125,9 +126,10 @@ class Djikstra():
         return dist
 
 if __name__=='__main__':
-    from process_csv import read_and_return, df_test
-    G = read_and_return(df_test)
+    from process_csv import read_and_return, df_test, read_and_return_with_loc_and_line
+    G = read_and_return_with_loc_and_line(df_test)
     djikstra = Djikstra(G)
     # print(djikstra.multi_source_dijkstra(G,'Czajkowskiego', target='Krucza'))
     # print(djikstra.shortest_path('Czajkowskiego', 'Krucza'))
-    print((djikstra.shortest_path_with_path('Czajkowskiego', 'Krucza')[1], 'Czajkowskiego', 'Krucza'))
+    #TODO so the problem is that it doesnt see a combination between lines at all. Bałtycka_A and Bałtycka_B are not connected whatsoever
+    print((djikstra.shortest_path_with_path('Bałtycka_A', 'Pola_A')[1], 'Bałtycka_A', 'Pola_A'))
