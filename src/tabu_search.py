@@ -1,6 +1,7 @@
 import random
 import itertools
 import networkx as nx
+from create_test_data import return_test_data, n_random_stops
 
 class TabuSearch:
     def __init__(self, graph, cost_type="weight", tabu_tenure=5, max_iterations=100):
@@ -23,8 +24,12 @@ class TabuSearch:
     
     def line_cost(self, path):
         """Oblicza koszt trasy w zależności od liczby przesiadek."""
-        return sum(1 for i in range(len(path)-1) if self.graph[path[i]][path[i+1]]['line'] != self.graph[path[i+1]][path[i+2]]['line'])
-
+        print(f'path in line cost: {path}')
+        try:
+            return sum(1 for i in range(len(path)-1) if self.graph[path[i]][path[i+1]]['line'] != self.graph[path[i+1]][path[i+2]]['line'])
+        except KeyError:
+            return float('inf')
+        
     def generate_neighbors(self, path):
         """Generuje sąsiednie rozwiązania przez zamianę dwóch losowych węzłów (swap)."""
         neighbors = []
@@ -66,9 +71,11 @@ class TabuSearch:
         return best_path, best_cost
     
 if __name__=='__main__':
-    from process_csv import read_and_return_with_loc_and_line, df_test
-    G = read_and_return_with_loc_and_line(df_test)
+    G = return_test_data()
     ts = TabuSearch(G, cost_type="transfers", tabu_tenure=5, max_iterations=100)
-    result=ts.tabu_search('Czajkowskiego', ['Stanki', 'Poprzeczna', 'Paprocka'])
+    result=ts.tab
+    list_of_stops= n_random_stops(4)
+    
+    ts.tabu_search(list_of_stops[0], list_of_stops[1:])
     print(result)
 
