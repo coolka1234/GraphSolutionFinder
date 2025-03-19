@@ -2,6 +2,10 @@ from process_csv import read_and_return, df_test, read_and_return_with_loc_and_l
 import networkx as nx
 import heapq
 from math import radians, sin, cos, sqrt, atan2
+
+def time_to_minutes(time):
+    """Converts datetime to minutes from midnight for easier calculation."""
+    return time.hour * 60 + time.minute
 class A_Star():
     def __init__(self, graph: nx.Graph):
         self.graph = graph
@@ -74,24 +78,29 @@ class A_Star():
                     dist[neighbor] = new_total_time
                     pred[neighbor] = node
                     # print(f'end={end}')
-                    priority = new_total_time + self.heuristic(neighbor, end[0])  # f = g + h
+                    priority = new_total_time + self.heuristic(neighbor, end[0])  
                     heapq.heappush(pq, (priority, new_time, neighbor))
 
         return None
-    def a_star_with_line(self, start, end):
-        """A* search algorithm optimizing for minimum line changes."""
+
+    def a_star_with_line(self, start, end, arrival_time):
+        """
+        A* search algorithm that optimizes for minimum line changes,
+        and respects arrival time at the start node.
+        """
         pq = []
-        heapq.heappush(pq, (0, start))  # Start with 0 line changes
+        start_time = convert_time(arrival_time)
+        heapq.heappush(pq, (0, time_to_minutes(start_time), start))  
         dist = {node: float("inf") for node in self.graph.nodes}
         dist[start] = 0
-        pred = {}  # To reconstruct the path
+        pred = {}  
         visited = set()
 
         while pq:
-            line_changes, node = heapq.heappop(pq)
+            line_changes, curr_time, node = heapq.heappop(pq)
 
             if node == end:
-                return self.reconstruct_path(pred, start, end)  # Reconstruct the path if we reached the end
+                return self.reconstruct_path(pred, start, end)
 
             if node in visited:
                 continue
@@ -100,17 +109,25 @@ class A_Star():
 
             for neighbor in self.graph.neighbors(node):
                 edge = self.graph[node][neighbor]
-                # If we're on a different line, consider it a line change (penalty = 1)
-                line_change_penalty = 1 if self.graph.nodes[node]["line"] != self.graph.nodes[neighbor]["line"] else 0
+                travel_time = edge["weight"]
+                neighbor_time = self.graph.nodes[neighbor]["time"]
 
+                if neighbor_time < curr_time:
+                    continue
+
+                new_time = neighbor_time
+                line_change_penalty = 1 if self.graph.nodes[node]["line"] != self.graph.nodes[neighbor]["line"] else 0
                 new_line_changes = line_changes + line_change_penalty
-                if new_line_changes < dist[neighbor]:  # If this is a better (fewer line changes) path
+
+                new_total_time = curr_time + travel_time  # Adding travel time
+
+                if new_line_changes < dist[neighbor]:
                     dist[neighbor] = new_line_changes
                     pred[neighbor] = node
-                    f_cost = new_line_changes + 0  # f = g + h
-                    heapq.heappush(pq, (f_cost, neighbor))
+                    f_cost = new_line_changes + self.heuristic(neighbor, end)  # f = g + h
+                    heapq.heappush(pq, (f_cost, new_time, neighbor))
 
-        return None  # Return None if no path found
+        return None 
     
     def reconstruct_paths(self, pred, start, end):
         if end not in pred:
@@ -192,4 +209,4 @@ if __name__ == '__main__':
     # arg1, arg2, arg3 = "Paprotna", "Broniewskiego", '20:00:00'
     start, end = a_star.get_start_and_end_nodes(arg1, arg2, arg3)
     print(start, end)
-    print(a_star.a_star_with_line(G, start, end, arg3))
+    print(a_star.a_star_with_time(G, start, end, arg3))
