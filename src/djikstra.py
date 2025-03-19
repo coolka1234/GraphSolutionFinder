@@ -1,84 +1,107 @@
 # Description: Djikstra's algorithm for finding the shortest path in a graph
 from itertools import count
 import networkx as nx
-
+import heapq
 from collections import deque
 from heapq import heappop, heappush
+from process_csv import convert_time, read_with_loc_line_and_time
 class Djikstra():
     def __init__(self, graph: nx.Graph):
         self.graph = graph
         self.visited = set()
     
-    def shortest_path(self, start: str, end: str):
-        dist = {node: float('inf') for node in self.graph.nodes}
-        dist[start] = 0
-        while len(self.visited) < len(self.graph.nodes):
-            node = self._min_distance(dist)
-            self.visited.add(node)
-            print(f"Visited: {node} at distance {dist[node]}")
-            for neighbor in self.graph.neighbors(node):
-                if neighbor not in self.visited:
-                    new_dist = dist[node] + self.graph[node][neighbor]['weight']
-                    if new_dist < dist[neighbor]:
-                        dist[neighbor] = new_dist
-        return dist[end]
+    # def shortest_path(self, start: str, end: str):
+    #     dist = {node: float('inf') for node in self.graph.nodes}
+    #     dist[start] = 0
+    #     while len(self.visited) < len(self.graph.nodes):
+    #         node = self._min_distance(dist)
+    #         self.visited.add(node)
+    #         print(f"Visited: {node} at distance {dist[node]}")
+    #         for neighbor in self.graph.neighbors(node):
+    #             if neighbor not in self.visited:
+    #                 new_dist = dist[node] + self.graph[node][neighbor]['weight']
+    #                 if new_dist < dist[neighbor]:
+    #                     dist[neighbor] = new_dist
+    #     return dist[end]
     
-    def shortest_path_with_path(self, start: str, end: str):
-        dist = {node: float('inf') for node in self.graph.nodes}
-        dist[start] = 0
-        pred = {node: [] for node in self.graph.nodes}
-        self.visited = set()
+    # def shortest_path_with_path(self, start: str, end: str):
+    #     dist = {node: float('inf') for node in self.graph.nodes}
+    #     dist[start] = 0
+    #     pred = {node: [] for node in self.graph.nodes}
+    #     self.visited = set()
 
-        while len(self.visited) < len(self.graph.nodes):
-            node = self._min_distance(dist)
-            self.visited.add(node)
-            print(f"dists: {dist} at node {node}")
-            print(f"Visited: {node} at distance {dist[node]}")
+    #     while len(self.visited) < len(self.graph.nodes):
+    #         node = self._min_distance(dist)
+    #         self.visited.add(node)
+    #         line = self.graph.nodes[node].get('line', 'Unknown')
 
-            for neighbor in self.graph.neighbors(node):
-                if neighbor not in self.visited:
-                    new_dist = dist[node] + self.graph[node][neighbor]['weight']
-                    if new_dist < dist[neighbor]:
-                        dist[neighbor] = new_dist
-                        pred[neighbor] = [node]  
-                    elif new_dist == dist[neighbor]:
-                        pred[neighbor].append(node)  
+    #         print(f"Visited: {node} (Line: {line}), at distance {dist[node]}")
 
-        paths = self.reconstruct_paths(pred, start, end)
+    #         for neighbor in self.graph.neighbors(node):
+    #             if neighbor not in self.visited:
+    #                 new_dist = dist[node] + self.graph[node][neighbor]['weight']
+    #                 if new_dist < dist[neighbor]:
+    #                     dist[neighbor] = new_dist
+    #                     pred[neighbor] = [node]  
+    #                 elif new_dist == dist[neighbor]:
+    #                     pred[neighbor].append(node)  
+
+    #     paths = self.reconstruct_paths(pred, start, end)
         
-        return dist[end], paths
+    #     return paths
+
+
+    # def reconstruct_paths(self, pred, start, end):
+    #     """Reconstruct the path from start to end, including line changes."""
+    #     paths = []
+    #     current = end
+
+    #     while current != start:
+    #         if current not in pred or not pred[current]:
+    #             print("No path found!")
+    #             return []
+
+    #         previous = pred[current][0]  
+    #         paths.append((previous, current))
+    #         current = previous  
+
+    #     paths.reverse()  
+
+    #     print("\nOptimal Route:")
+    #     prev_line = None
+    #     for i, (start_stop, end_stop) in enumerate(paths):
+    #         start_line = self.graph.nodes[start_stop].get("line", "Unknown")
+    #         end_line = self.graph.nodes[end_stop].get("line", "Unknown")
+
+    #         if start_line != prev_line:
+    #             print(f"🚏 Take {start_line} from {start_stop}", end=" ")
+
+    #         print(f"→ {end_stop}", end=" ")
+
+    #         if end_line != start_line:
+    #             print(f"(Switch to {end_line})")
+
+    #         prev_line = end_line
+
+    #     print("\n")
+    #     return paths
+
 
     
-    def reconstruct_paths(self, pred, start, end, path=None, all_paths=None):
-        if path is None:
-            path = [end]
-        if all_paths is None:
-            all_paths = []
-
-        if end == start:
-            all_paths.append(path[::-1]) 
-            return all_paths
-
-        for predecessor in pred[end]:
-            self.reconstruct_paths(pred, start, predecessor, path + [predecessor], all_paths)
-
-        return all_paths
-
+    # def deconstruct_path(self, pred, start, end):
+    #     path = deque([end])
+    #     while path[0] != start:
+    #         path.appendleft(pred[path[0]][0])
+    #     return path
     
-    def deconstruct_path(self, pred, start, end):
-        path = deque([end])
-        while path[0] != start:
-            path.appendleft(pred[path[0]][0])
-        return path
-    
-    def _min_distance(self, dist):
-        min_dist = float('inf')
-        min_node = None
-        for node in dist:
-            if node not in self.visited and dist[node] < min_dist:
-                min_dist = dist[node]
-                min_node = node
-        return min_node
+    # def _min_distance(self, dist):
+        # min_dist = float('inf')
+        # min_node = None
+        # for node in dist:
+        #     if node not in self.visited and dist[node] < min_dist:
+        #         min_dist = dist[node]
+        #         min_node = node
+        # return min_node
 
     @staticmethod
     def multi_source_dijkstra(G, sources, pred=None, paths=None, target=None, cutoff=None, weight="weight"):
@@ -124,12 +147,107 @@ class Djikstra():
                     if pred is not None:
                         pred[u].append(v)
         return dist
+    
+
+    def dijkstra_with_time(self, start: str, end: str, departure_time: str):
+        G = self.graph
+        start_time = convert_time(departure_time)
+
+        pq = []
+        heapq.heappush(pq, (0, start_time, start))
+
+        dist = {node: float("inf") for node in G.nodes}
+        dist[start] = 0
+        pred = {}
+
+        while pq:
+            total_time, curr_time, node = heapq.heappop(pq)
+
+            if node == end:
+                break
+
+            for neighbor in G.neighbors(node):
+                edge = G[node][neighbor]
+                travel_time = edge["weight"]
+                neighbor_time = G.nodes[neighbor]["time"]
+
+                if neighbor_time < curr_time:
+                    continue
+
+                new_time = neighbor_time
+                new_total_time = total_time + (new_time - curr_time).seconds // 60
+
+                if new_total_time < dist[neighbor]:
+                    dist[neighbor] = new_total_time
+                    pred[neighbor] = node
+                    heapq.heappush(pq, (new_total_time, new_time, neighbor))
+
+        return self.reconstruct_paths(pred, start, end)
+    
+    def reconstruct_paths(self, pred, start, end):
+        if end not in pred:
+            print("No valid route found!")
+            return []
+
+        path = []
+        current = end
+
+        while current != start:
+            path.append(current)
+            current = pred.get(current, None)
+            if current is None:
+                return []
+
+        path.append(start)
+        path.reverse()
+
+        print("\nOptimal Route:")
+        prev_line = None
+        prev_time = None
+
+        for node in path:
+            stop, time_line = node.split("@")
+            time, line = time_line.split("_")
+
+            if prev_line is None or line != prev_line:
+                print(f"\n🚏 Take {line} from {stop} at {time}", end=" ")
+
+            if prev_time:
+                print(f"→ {stop} at {time}", end=" ")
+
+            if prev_line and line != prev_line:
+                print(f"(Switch to {line})")
+
+            prev_line = line
+            prev_time = time
+
+        print("\n")
+        return path
+    
+    def get_start_and_end_nodes(self, start, end, departure_time):
+        start_nodes = [node for node in self.graph.nodes if node.startswith(f"{start}@")]
+        start_nodes.sort(key=lambda x: self.graph.nodes[x]["time"])  # Sort by departure time
+
+        start_node = None
+        for node in start_nodes:
+            if self.graph.nodes[node]["time"] >= convert_time(departure_time):
+                start_node = node
+                break
+
+        if start_node is None:
+            print(f"No available departures from {start} at this time.")
+        else:
+            end_nodes = [node for node in self.graph.nodes if node.startswith(f"{end}@")]
+        return start_node, end_nodes[0]
+
+
 
 if __name__=='__main__':
     from process_csv import read_and_return, df_test, read_and_return_with_loc_and_line
-    G = read_and_return_with_loc_and_line(df_test)
+    G = read_with_loc_line_and_time(df_test)
     djikstra = Djikstra(G)
-    # print(djikstra.multi_source_dijkstra(G,'Czajkowskiego', target='Krucza'))
-    # print(djikstra.shortest_path('Czajkowskiego', 'Krucza'))
     #TODO so the problem is that it doesnt see a combination between lines at all. Bałtycka_A and Bałtycka_B are not connected whatsoever
-    print((djikstra.shortest_path_with_path('Bałtycka_A', 'Pola_A')[1], 'Bałtycka_A', 'Pola_A'))
+    start, end= djikstra.get_start_and_end_nodes('Chłodna', 'Różanka', '5:29:00')
+    print(start, end)
+    ((djikstra.dijkstra_with_time(start, end, '5:29:00'), 'Chłodna', 'Różanka'))
+    # TESTCASE 1: (Chłodna, Różanka)
