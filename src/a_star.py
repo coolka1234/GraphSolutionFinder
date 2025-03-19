@@ -78,6 +78,39 @@ class A_Star():
                     heapq.heappush(pq, (priority, new_time, neighbor))
 
         return None
+    def a_star_with_line(self, start, end):
+        """A* search algorithm optimizing for minimum line changes."""
+        pq = []
+        heapq.heappush(pq, (0, start))  # Start with 0 line changes
+        dist = {node: float("inf") for node in self.graph.nodes}
+        dist[start] = 0
+        pred = {}  # To reconstruct the path
+        visited = set()
+
+        while pq:
+            line_changes, node = heapq.heappop(pq)
+
+            if node == end:
+                return self.reconstruct_path(pred, start, end)  # Reconstruct the path if we reached the end
+
+            if node in visited:
+                continue
+
+            visited.add(node)
+
+            for neighbor in self.graph.neighbors(node):
+                edge = self.graph[node][neighbor]
+                # If we're on a different line, consider it a line change (penalty = 1)
+                line_change_penalty = 1 if self.graph.nodes[node]["line"] != self.graph.nodes[neighbor]["line"] else 0
+
+                new_line_changes = line_changes + line_change_penalty
+                if new_line_changes < dist[neighbor]:  # If this is a better (fewer line changes) path
+                    dist[neighbor] = new_line_changes
+                    pred[neighbor] = node
+                    f_cost = new_line_changes + 0  # f = g + h
+                    heapq.heappush(pq, (f_cost, neighbor))
+
+        return None  # Return None if no path found
     
     def reconstruct_paths(self, pred, start, end):
         if end not in pred:
@@ -159,4 +192,4 @@ if __name__ == '__main__':
     # arg1, arg2, arg3 = "Paprotna", "Broniewskiego", '20:00:00'
     start, end = a_star.get_start_and_end_nodes(arg1, arg2, arg3)
     print(start, end)
-    print(a_star.a_star_with_time(G, start, end, arg3))
+    print(a_star.a_star_with_line(G, start, end, arg3))
