@@ -1,105 +1,162 @@
-from process_csv import read_and_return, df_test, read_and_return_with_loc_and_line
+from process_csv import read_and_return, df_test, read_and_return_with_loc_and_line, convert_time, read_and_visualize_with_loc_and_line, read_with_loc_line_and_time
 import networkx as nx
 import heapq
+from math import radians, sin, cos, sqrt, atan2
 class A_Star():
     def __init__(self, graph: nx.Graph):
         self.graph = graph
-        self.heuristic = self.heuristic_euclidean
+        # self.heuristic = self.heuristic_euclidean
 
     def heuristic_optimal(self, node, target):
         return nx.shortest_path_length(self.graph, source=node, target=target, weight='weight')
     
-    def heuristic_euclidean(self, node, target):
-        pos = nx.get_node_attributes(self.graph, 'pos')
-        x1, y1 = pos[node]
-        x2, y2 = pos[target]
-        return ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
+
+    def haversine(self, lat1, lon1, lat2, lon2):
+        """Calculate the great-circle distance (in km) between two points using latitude & longitude."""
+        R = 6371  
+        lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+
+        a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+        c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+        return R * c
+
+    def heuristic(self, node, end_nodes, avg_speed=30):
+        """
+        Estimate the remaining travel time (in minutes) from `node` to `end_nodes`
+        based on straight-line distance (Haversine formula) and average speed.
+        """
+        stop, time_line = node.split("@")
+        
+        lat1, lon1 = self.graph.nodes[node]["pos"]
+
+        min_time = float('inf')
+        lat2, lon2 = self.graph.nodes[end_nodes]["pos"]
+        distance_km = self.haversine(lat1, lon1, lat2, lon2)
+
+        estimated_time = (distance_km / avg_speed) * 60  
+        min_time = min(min_time, estimated_time)
+
+        return min_time  
+
     
-    def heuristic_line_change(self, node, target):
-        line = nx.get_node_attributes(self.graph, 'line') 
-        line1=line[node]
-        line2= line[target]
-        return 0 if line1==line2 else 1
+
+    def a_star_with_time(self, graph, start, end, departure_time):
+        """A* search algorithm optimizing for the shortest travel time."""
+        pq = []
+        start_time = convert_time(departure_time)
+        heapq.heappush(pq, (0, start_time, start))  
+
+        dist = {node: float("inf") for node in graph.nodes}
+        dist[start] = 0
+        pred = {}
+
+        while pq:
+            total_time, curr_time, node = heapq.heappop(pq)
+
+            if node in end:
+                return self.reconstruct_paths(pred, start, node)
+
+            for neighbor in graph.neighbors(node):
+                edge = graph[node][neighbor]
+                travel_time = edge["weight"]
+                neighbor_time = graph.nodes[neighbor]["time"]
+
+                if neighbor_time < curr_time:
+                    continue  
+
+                new_time = neighbor_time
+                new_total_time = total_time + (new_time - curr_time).seconds // 60
+
+                if new_total_time < dist[neighbor]:
+                    dist[neighbor] = new_total_time
+                    pred[neighbor] = node
+                    # print(f'end={end}')
+                    priority = new_total_time + self.heuristic(neighbor, end[0])  # f = g + h
+                    heapq.heappush(pq, (priority, new_time, neighbor))
+
+        return None
     
-    def shortest_path_a_star_line_change(self, start, end, heuristic):
-        self.heuristic = heuristic
-        pq = []  
-        heapq.heappush(pq, (0, start))  
-        
-        dist = {node: float('inf') for node in self.graph.nodes}
-        dist[start] = 0
-        
-        pred = {node: [] for node in self.graph.nodes}
-        
-        while pq:
-            _, node = heapq.heappop(pq)  
-            
-            if node == end:  
+    def reconstruct_paths(self, pred, start, end):
+        if end not in pred:
+            print("No valid route found!")
+            return []
+
+        path = []
+        current = end
+
+        while current != start:
+            path.append(current)
+            current = pred.get(current, None)
+            if current is None:
+                return []
+
+        path.append(start)
+        path.reverse()
+
+        print("\nOptimal Route:")
+        prev_line = None
+        prev_time = None
+
+        for node in path:
+            stop, time_line = node.split("@")
+            time, line = time_line.split("_")
+
+            if prev_line is None or line != prev_line:
+                print(f"\n🚏 Take {line} from {stop} at {time}", end=" ")
+
+            if prev_time:
+                print(f"→ {stop} at {time}", end=" ")
+
+            if prev_line and line != prev_line:
+                print(f"(Switch to {line})")
+
+            prev_line = line
+            prev_time = time
+
+        print("\n")
+        return path
+
+    # def reconstruct_paths(self, pred, start, end):
+    #     """Reconstructs the shortest path from `start` to `end` using the predecessor dictionary."""
+    #     path = []
+    #     node = end
+
+    #     while node is not None:
+    #         path.append(node)
+    #         node = pred.get(node)  # Move to the predecessor
+
+    #     path.reverse()  # Reverse to get the correct order from start → end
+
+    #     if path[0] != start:
+    #         return None  # No valid path found
+
+    #     return path
+
+
+    def get_start_and_end_nodes(self, start, end, departure_time):
+        start_nodes = [node for node in self.graph.nodes if node.startswith(f"{start}@")]
+        start_nodes.sort(key=lambda x: self.graph.nodes[x]["time"]) 
+
+        start_node = None
+        for node in start_nodes:
+            if self.graph.nodes[node]["time"] >= convert_time(departure_time):
+                start_node = node
                 break
-            
-            for neighbor in self.graph.neighbors(node):
-                weight = self.graph[node][neighbor].get('weight', 1)  
-                new_dist = dist[node] + weight
-                
-                if new_dist < dist[neighbor]:  
-                    dist[neighbor] = new_dist
-                    pred[neighbor] = [node]
-                    f_score = new_dist + self.heuristic(neighbor, end)  
-                    heapq.heappush(pq, (f_score, neighbor))
-                elif new_dist == dist[neighbor]:  
-                    pred[neighbor].append(node)
-        
-        paths = self.reconstruct_paths(pred, start, end)
-        return len(paths[0]), paths
 
-    def shortest_path_a_star(self, start, end, heuristic):
-        """A* search to find the shortest weighted path."""
-        self.heuristic = heuristic
-        pq = []  
-        heapq.heappush(pq, (0, start))  
-        dist = {node: float('inf') for node in self.graph.nodes}
-        dist[start] = 0
-        pred = {node: [] for node in self.graph.nodes}
-        while pq:
-            _, node = heapq.heappop(pq)  
-            
-            if node == end:  
-                break
-            
-            for neighbor in self.graph.neighbors(node):
-                weight = self.graph[node][neighbor].get('weight', 1)  
-                new_dist = dist[node] + weight
-                
-                if new_dist < dist[neighbor]:  
-                    dist[neighbor] = new_dist
-                    pred[neighbor] = [node]
-                    f_score = new_dist + self.heuristic(neighbor, end)  
-                    heapq.heappush(pq, (f_score, neighbor))
-                elif new_dist == dist[neighbor]:  
-                    pred[neighbor].append(node)
-        
-        paths = self.reconstruct_paths(pred, start, end)
-        return dist[end], len(paths[1])
-
-    def reconstruct_paths(self, pred, start, end, path=None, all_paths=None):
-        """Recursively reconstructs paths from start to end."""
-        if path is None:
-            path = [end]
-        if all_paths is None:
-            all_paths = []
-
-        if end == start:
-            all_paths.append(path[::-1])  
-            return all_paths
-
-        for predecessor in pred[end]:
-            self.reconstruct_paths(pred, start, predecessor, path + [predecessor], all_paths)
-
-        return all_paths
+        if start_node is None:
+            print(f"No available departures from {start} at this time.")
+        else:
+            end_nodes = [node for node in self.graph.nodes if node.startswith(f"{end}@")]
+        return start_node, end_nodes
     
 if __name__ == '__main__':
-    G = read_and_return_with_loc_and_line(df_test)
+    G = read_with_loc_line_and_time(df_test)
     a_star = A_Star(G)
-    # print(a_star.shortest_path_a_star('Czajkowskiego', 'Krucza', a_star.heuristic_optimal))
-    print(a_star.shortest_path_a_star('Czajkowskiego', 'Gagarina', a_star.heuristic_euclidean))
-    # print(a_star.shortest_path_a_star_line_change('Czajkowskiego', 'Gagarina', a_star.heuristic_line_change))
+    arg1, arg2, arg3 = 'Chłodna', 'Różanka', '05:29:00'
+    # arg1, arg2, arg3 = "Paprotna", "Broniewskiego", '20:00:00'
+    start, end = a_star.get_start_and_end_nodes(arg1, arg2, arg3)
+    print(start, end)
+    print(a_star.a_star_with_time(G, start, end, arg3))

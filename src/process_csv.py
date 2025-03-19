@@ -1,3 +1,4 @@
+from turtle import pos
 import networkx as nx
 import pandas as pd
 from datetime import datetime
@@ -75,12 +76,16 @@ def read_with_loc_line_and_time(data_frame):
         dep_time = convert_time(row['departure_time'])
         arr_time = convert_time(row['arrival_time'])
         travel_time = (arr_time - dep_time).seconds // 60
+        pos_start_x=row['start_stop_lat']
+        pos_start_y=row['start_stop_lon'] 
+        pos_end_x=row['end_stop_lat']
+        pos_end_y=row['end_stop_lon']
 
         start_node = f"{start_stop}@{row['departure_time']}_{line}"
-        end_node = f"{end_stop}@{row['arrival_time']}_{line}"
+        end_node = f"{end_stop}@{row['arrival_time']}_{line}" 
 
-        G.add_node(start_node, stop=start_stop, line=line, time=dep_time)
-        G.add_node(end_node, stop=end_stop, line=line, time=arr_time)
+        G.add_node(start_node, stop=start_stop, line=line, time=dep_time, pos=(pos_start_x, pos_start_y))
+        G.add_node(end_node, stop=end_stop, line=line, time=arr_time, pos=(pos_end_x, pos_end_y))
 
         G.add_edge(start_node, end_node, weight=travel_time, travel_time=travel_time, type="travel")
 
