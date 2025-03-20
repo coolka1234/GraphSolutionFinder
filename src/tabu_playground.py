@@ -57,7 +57,7 @@ class TabuSearch:
             valid_instances = []
 
             for instance in possible_instances:
-                stop_time = convert_time(self.graph.nodes[instance]["time"])
+                stop_time = convert_time(self.graph.nodes[instance]["departure_time"])
                 if stop_time >= current_time:
                     valid_instances.append(instance)
 
