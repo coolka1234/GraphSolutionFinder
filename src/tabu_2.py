@@ -67,10 +67,10 @@ def tabu_search(initial_route, max_iterations, tabu_size, cost_function):
 
     return best_route, best_cost
 
-start_stop = "Zajezdnia Obornicka"
-visit_list = ["Paprotna", "Obornicka (Wołowska)", "Bezpieczna"]
-criteria = "p"  
-initial_time = "20:52:00"
+start_stop = "Chłodna"
+visit_list = ["Wiejska", "FAT", "Paprotna"]
+criteria = "t"  
+initial_time = "5:00"
 
 
 initial_route = [{'start_stop': start_stop, 'line': None, 'departure_time': initial_time, 'arrival_time': initial_time, 'end_stop': start_stop}]
