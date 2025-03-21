@@ -124,7 +124,7 @@ class TabuSearch:
 
 if __name__ == '__main__':
     G = read_with_loc_line_and_time(df_test)
-    ts = TabuSearch(G, cost_type="transfers", tabu_tenure=5, max_iterations=10000)
+    ts = TabuSearch(G, cost_type="transfers", tabu_tenure=5, max_iterations=float('inf'))
 
     start_stop = "Chłodna"
     stops_list = ["Wiejska", "FAT", "Paprotna", "Chłodna"]
