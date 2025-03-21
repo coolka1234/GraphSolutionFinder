@@ -6,17 +6,19 @@ from process_csv import read_and_return_with_loc_line_and_time, read_with_loc_li
 
 def convert_time(time_str):
     """Converts time from string 'HH:MM' to datetime object."""
-    return datetime.strptime(time_str, "%H:%M")
+    if type(time_str) == datetime:
+        return time_str
+    return datetime.strptime(time_str, "%H:%M:%S")
 
 def time_to_minutes(time):
     """Converts datetime to minutes from midnight for easier calculation."""
     return time.hour * 60 + time.minute
 
-def preprocess_stop_instances(graph, stop_name):
+def preprocess_stop_instances(graph, stop_name, arr_time):
     """
     Returns all valid stop instances (e.g., 'Chłodna@08:00_L1') for a given stop.
     """
-    return [node for node in graph.nodes if node.startswith(stop_name)]
+    return [node for node in graph.nodes if node.startswith(stop_name) and convert_time(graph.nodes[node]["time"]) >= arr_time]
 
 class TabuSearch:
     def __init__(self, graph, cost_type="transfers", tabu_tenure=5, max_iterations=100):
@@ -46,18 +48,18 @@ class TabuSearch:
             return sum(1 for i in range(len(path)-2) if self.graph.nodes[path[i]]["line"] != self.graph.nodes[path[i+1]]["line"])
         except (KeyError, TypeError):
             return float('inf')
-
+    # tu są jakieś krzaki - dzban nic nie znajduje
     def generate_random_solution(self, start, stops, departure_time):
         """Generates an initial random solution based on available stop instances and times."""
         initial_path = [start]
         current_time = convert_time(departure_time)
 
         for stop in stops:
-            possible_instances = preprocess_stop_instances(self.graph, stop)
+            possible_instances = preprocess_stop_instances(self.graph, stop, current_time)
             valid_instances = []
 
             for instance in possible_instances:
-                stop_time = convert_time(self.graph.nodes[instance]["departure_time"])
+                stop_time = convert_time(self.graph.nodes[instance]["time"])
                 if stop_time >= current_time:
                     valid_instances.append(instance)
 
@@ -82,11 +84,11 @@ class TabuSearch:
 
     def tabu_search(self, start, stops, departure_time):
         """Main function to search for the best path."""
-        start_instances = preprocess_stop_instances(self.graph, start)
+        start_instances = preprocess_stop_instances(self.graph, start, convert_time(departure_time))
         if not start_instances:
             raise ValueError(f"No valid instances found for start stop: {start}")
-        start = random.choice(start_instances)
-
+        start_instances.sort()
+        start = start_instances[0]
         current_path = self.generate_random_solution(start, stops, departure_time)
         if not current_path:
             raise ValueError("No valid initial solution found with given time constraints.")
@@ -121,12 +123,12 @@ class TabuSearch:
 
 
 if __name__ == '__main__':
-    G = read_and_return_with_loc_line_and_time(df_test)
-    ts = TabuSearch(G, cost_type="transfers", tabu_tenure=5, max_iterations=100)
+    G = read_with_loc_line_and_time(df_test)
+    ts = TabuSearch(G, cost_type="transfers", tabu_tenure=5, max_iterations=10000)
 
     start_stop = "Chłodna"
-    stops_list = ["Wiejska", "FAT", "Paprotna"]
-    arrival_time_at_start = "07:30"  
+    stops_list = ["Wiejska", "FAT", "Paprotna", "Chłodna"]
+    arrival_time_at_start = "07:30:00"  
 
     best_path, best_cost = ts.tabu_search(start_stop, stops_list, arrival_time_at_start)
     print("Optimal Path:", best_path)
