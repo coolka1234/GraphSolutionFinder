@@ -1,4 +1,4 @@
-from process_csv import read_and_return, df_test, read_and_return_with_loc_and_line, convert_time, read_and_visualize_with_loc_and_line, read_with_loc_line_and_time
+from process_csv import df_test, convert_time,read_with_loc_line_and_time
 import networkx as nx
 import heapq
 from math import radians, sin, cos, sqrt, atan2
@@ -202,11 +202,22 @@ class A_Star():
             end_nodes = [node for node in self.graph.nodes if node.startswith(f"{end}@")]
         return start_node, end_nodes
     
+def run_a_star_time(start, end, departure_time):
+    G = read_with_loc_line_and_time(df_test)
+    a_star = A_Star(G)
+    start, end = a_star.get_start_and_end_nodes(start, end, departure_time)
+    print(a_star.a_star_with_time(G, start, end, departure_time))
+
+def run_a_star_line(start, end, arrival_time):
+    G = read_with_loc_line_and_time(df_test)
+    a_star = A_Star(G)
+    print(a_star.a_star_with_line(start, end, arrival_time))
+    
 if __name__ == '__main__':
     G = read_with_loc_line_and_time(df_test)
     a_star = A_Star(G)
     arg1, arg2, arg3 = 'Chłodna', 'Różanka', '05:29:00'
     # arg1, arg2, arg3 = "Paprotna", "Broniewskiego", '20:00:00'
     start, end = a_star.get_start_and_end_nodes(arg1, arg2, arg3)
-    print(start, end)
+    # print(start, end)
     print(a_star.a_star_with_time(G, start, end, arg3))

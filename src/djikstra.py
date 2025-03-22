@@ -226,7 +226,7 @@ class Djikstra():
     
     def get_start_and_end_nodes(self, start, end, departure_time):
         start_nodes = [node for node in self.graph.nodes if node.startswith(f"{start}@")]
-        start_nodes.sort(key=lambda x: self.graph.nodes[x]["time"])  # Sort by departure time
+        start_nodes.sort(key=lambda x: self.graph.nodes[x]["time"])  
 
         start_node = None
         for node in start_nodes:
@@ -240,13 +240,20 @@ class Djikstra():
             end_nodes = [node for node in self.graph.nodes if node.startswith(f"{end}@")]
         return start_node, end_nodes[0]
 
-
-
-if __name__=='__main__':
-    from process_csv import read_and_return, df_test, read_and_return_with_loc_and_line
+def run_djikstra(start, end, departure_time):
     G = read_with_loc_line_and_time(df_test)
     djikstra = Djikstra(G)
-    #TODO so the problem is that it doesnt see a combination between lines at all. Bałtycka_A and Bałtycka_B are not connected whatsoever
+    start, end = djikstra.get_start_and_end_nodes(start, end, departure_time)
+    djikstra.dijkstra_with_time(start, end, departure_time)
+
+def test_run_djikstra():
+    run_djikstra('Chłodna', 'Różanka', '5:29:00')
+    # TESTCASE 1: (Chłodna, Różanka)
+
+if __name__=='__main__':
+    from process_csv import df_test
+    G = read_with_loc_line_and_time(df_test)
+    djikstra = Djikstra(G)
     start, end= djikstra.get_start_and_end_nodes('Chłodna', 'Różanka', '5:29:00')
     print(start, end)
     ((djikstra.dijkstra_with_time(start, end, '5:29:00'), 'Chłodna', 'Różanka'))

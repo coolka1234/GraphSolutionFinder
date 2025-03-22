@@ -460,6 +460,22 @@ class TabuSearch:
 
         return path
 
+def run_tabu_time(start_stop, stops_list, arrival_time_at_start):
+    G = read_with_loc_line_and_time(df_test)
+    ts = TabuSearch(G, cost_type="weight", tabu_tenure=5, max_iterations=100, use_aspiration=True)
+
+    best_path, best_cost = ts.tabu_search(start_stop, stops_list, arrival_time_at_start)
+    print("Optimal Path:", best_path)
+    print("Total Cost (Transfers or Time):", best_cost)
+
+def run_tabu_line(start_stop, stops_list, arrival_time_at_start):
+    G = read_with_loc_line_and_time(df_test)
+    ts = TabuSearch(G, cost_type="transfers", tabu_tenure=5, max_iterations=100, use_aspiration=True)
+
+    best_path, best_cost = ts.tabu_search(start_stop, stops_list, arrival_time_at_start)
+    print("Optimal Path:", best_path)
+    print("Total Cost (Transfers or Time):", best_cost)
+
 
 if __name__ == '__main__':
     G = read_with_loc_line_and_time(df_test)
