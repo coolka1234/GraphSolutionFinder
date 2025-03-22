@@ -5,7 +5,7 @@ import networkx as nx
 from datetime import datetime, timedelta
 
 from networkx import NetworkXNoPath
-from src.process_csv import read_and_return_with_loc_line_and_time, read_with_loc_line_and_time, df_test
+from process_csv import read_and_return_with_loc_line_and_time, read_with_loc_line_and_time, df_test
 
 def convert_time(time_str):
     """Converts time from string 'HH:MM' to datetime object."""
@@ -51,7 +51,7 @@ def calculate_initial_waiting_time(path, departure_time):
     
     return max(0, waiting_time)
 
-def find_path_with_nodes(G, required_nodes, source, departure_time=None, max_attempts=100):
+def find_path_with_nodes(G, required_nodes, source, departure_time=None, max_attempts=500):
     normalized_required = {normalize_name(n) for n in required_nodes}
     potential_first_nodes = get_nodes_starting_with(G, source)
     potential_last_nodes = get_nodes_starting_with(G, source)
@@ -75,9 +75,10 @@ def find_path_with_nodes(G, required_nodes, source, departure_time=None, max_att
                      
                 except nx.NetworkXNoPath:
                     continue
-                iteration+=1
-                if iteration>max_attempts:
-                    break
+            iteration+=1
+        if iteration>max_attempts:
+            print("Max attempts reached.")
+            break
     return best_path
 
 def get_random_path(G, source, target, max_attempts=100):
@@ -482,7 +483,7 @@ if __name__ == '__main__':
     ts = TabuSearch(G, cost_type="weight", tabu_tenure=5, max_iterations=100, use_aspiration=True)
 
     start_stop = "Chłodna"
-    stops_list = [start_stop]+["Wiejska", "FAT", "Paprotna", "Chłodna"]
+    stops_list = ["Wiejska", "FAT", "Chłodna"]
     arrival_time_at_start = "3:30:00"  
 
     best_path, best_cost = ts.tabu_search(start_stop, stops_list, arrival_time_at_start)
