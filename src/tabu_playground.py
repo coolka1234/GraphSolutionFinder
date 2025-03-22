@@ -38,11 +38,13 @@ def find_path_with_nodes(G, required_nodes):
 
                     if normalized_required.issubset(path_normalized):
                         print(f"Found path: {path}")
-                        return path  # Return the first valid path found
+                        return path  
 
                 except nx.NetworkXNoPath:
                     continue
-    return None  # No valid path found
+    return None  
+
+
 
 class TabuSearch:
     def __init__(self, graph, cost_type="transfers", tabu_tenure=5, max_iterations=100):
@@ -66,19 +68,24 @@ class TabuSearch:
             for i in range(len(path) - 1):
                 edge_data = self.graph[path[i]].get(path[i+1], {})
                 try:
+                    
                     weight=nx.dijkstra_path_length(self.graph, path[i], path[i+1], weight='weight')
                 except NetworkXNoPath:
                     print(f"Path not found between {path[i]} and {path[i+1]}")
                     return float('inf')
                 if weight is None:
                     raise ValueError(f"Missing weight for edge {path[i]} -> {path[i+1]}")
-                print(f'-----------{weight}---------------') 
                 total_cost += weight
+                # print(f'-----------{total_cost}---------------') 
         except (KeyError, TypeError, ValueError) as e:
             print(f"Error in cost calculation: {e}")
             return float('inf')
         
         return total_cost
+
+    def cost_weight(self, path):
+        print(f'path: {path}')
+        return nx.path_weight(self.graph, path, weight='weight')
 
     def line_cost(self, path):
         """Calculates the number of line transfers in the path."""
@@ -86,39 +93,27 @@ class TabuSearch:
             return sum(1 for i in range(len(path)-2) if self.graph.nodes[path[i]]["line"] != self.graph.nodes[path[i+1]]["line"])
         except (KeyError, TypeError):
             return float('inf')
-    # tu są jakieś krzaki - dzban nic nie znajduje
-    # def generate_random_solution(self, start, stops, departure_time):
-    #     """Generates an initial random solution based on available stop instances and times."""
-    #     initial_path = [start]
-    #     current_time = convert_time(departure_time)
-
-    #     for stop in stops:
-    #         possible_instances = preprocess_stop_instances(self.graph, stop, current_time)
-    #         valid_instances = []
-
-    #         for instance in possible_instances:
-    #             stop_time = convert_time(self.graph.nodes[instance]["time"])
-    #             if stop_time >= current_time:
-    #                 valid_instances.append(instance)
-
-    #         if not valid_instances:
-    #             return None  
-            
-    #         chosen_instance = random.choice(valid_instances)
-    #         initial_path.append(chosen_instance)
-    #         current_time = convert_time(self.graph.nodes[chosen_instance]["time"])
-
-    #     initial_path.append(start)  
-    #     return initial_path
 
     def generate_neighbors(self, path):
-        """Generates neighboring solutions by swapping two random stops."""
+        """Generates neighboring solutions by swapping two random stops, ensuring the new path is valid."""
         neighbors = []
-        for i, j in itertools.combinations(range(1, len(path)-1), 2):
+        
+        for i, j in itertools.combinations(range(1, len(path) - 1), 2):
             new_path = path[:]
+            
             new_path[i], new_path[j] = new_path[j], new_path[i]
-            neighbors.append(new_path)
+
+            valid = True
+            for k in range(len(new_path) - 1):
+                if new_path[k+1] not in self.graph[new_path[k]]:
+                    valid = False
+                    break
+            
+            if valid:
+                neighbors.append(new_path)  
+
         return neighbors
+
 
     def tabu_search(self, start, stops, departure_time):
         """Main function to search for the best path."""
@@ -151,13 +146,13 @@ class TabuSearch:
             if best_neighbor_cost < best_cost:
                 best_path = best_neighbor
                 best_cost = best_neighbor_cost
-                no_improve_count = 0  # Reset stagnation counter
+                no_improve_count = 0  
             else:
-                no_improve_count += 1  # Increment stagnation counter
+                no_improve_count += 1  
 
             if no_improve_count >= no_improve_limit:
                 print("Stopping early due to stagnation.")
-                break  # Terminate search early
+                break  
 
             if best_neighbor_cost < best_cost:
                 best_path = best_neighbor
@@ -215,7 +210,7 @@ if __name__ == '__main__':
 
     start_stop = "Chłodna"
     stops_list = ["Wiejska", "FAT", "Paprotna", "Chłodna"]
-    arrival_time_at_start = "07:30:00"  
+    arrival_time_at_start = "7:30:00"  
 
     best_path, best_cost = ts.tabu_search(start_stop, stops_list, arrival_time_at_start)
     print("Optimal Path:", best_path)
