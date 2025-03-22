@@ -1,3 +1,4 @@
+from operator import ge
 import random
 import itertools
 import networkx as nx
@@ -30,12 +31,34 @@ def get_nodes_starting_with(graph, prefix):
     """Returns all nodes from the graph that start with the given prefix."""
     return [node for node in graph.nodes if node.startswith(prefix)]
 
-def find_path_with_nodes(G, required_nodes, source):
+def get_time_from_node(node):
+    """Extracts the time part from the node name."""
+    return str(node).split('@')[1].split('_')[0]
+
+def calculate_initial_waiting_time(path, departure_time):
+    """Calculate waiting time from desired departure time to first bus/train departure."""
+    if not path or not departure_time:
+        return 0
+    
+    first_node_time = convert_time(get_time_from_node(path[0]))
+    
+    if isinstance(departure_time, str):
+        user_departure_time = convert_time(departure_time)
+    else:
+        user_departure_time = departure_time
+        
+    waiting_time = (first_node_time - user_departure_time).total_seconds() / 60
+    
+    return max(0, waiting_time)
+
+def find_path_with_nodes(G, required_nodes, source, departure_time=None, max_attempts=100):
     normalized_required = {normalize_name(n) for n in required_nodes}
     potential_first_nodes = get_nodes_starting_with(G, source)
     potential_last_nodes = get_nodes_starting_with(G, source)
     # print(f"Potential first nodes: {potential_first_nodes}")
-
+    best_path = None
+    best_cost = float('inf')
+    iteration=0
     for source in potential_first_nodes:
         for target in potential_last_nodes:
             if source != target and normalize_name(source) in normalized_required and normalize_name(target) in normalized_required:
@@ -45,11 +68,17 @@ def find_path_with_nodes(G, required_nodes, source):
 
                     if normalized_required.issubset(path_normalized):
                         # print(f"Found path: {path}")
-                        return path  
-
+                        cost= nx.path_weight(G, path, weight="weight")+calculate_initial_waiting_time(path, departure_time)
+                        if cost<best_cost:
+                            best_path = path
+                            best_cost = nx.path_weight(G, path, weight="weight")  
+                     
                 except nx.NetworkXNoPath:
                     continue
-    return None  
+                iteration+=1
+                if iteration>max_attempts:
+                    break
+    return best_path
 
 def get_random_path(G, source, target, max_attempts=100):
     """
@@ -185,17 +214,14 @@ class TabuSearch:
             List of valid neighboring paths
         """
         if not required_stops:
-            # Extract the required stops from the path if not provided
             required_stops = list(set(normalize_name(node) for node in path))
         
         neighbors = []
         
-        # Strategy 1: Replace individual nodes with alternative instances of the same stop
         for i in range(len(path)):
             current_node = path[i]
             current_stop = normalize_name(current_node)
             
-            # Find alternative instances of the same stop
             alt_instances = [
                 node for node in self.graph.nodes 
                 if normalize_name(node) == current_stop and node != current_node
@@ -205,11 +231,8 @@ class TabuSearch:
                 new_path = path.copy()
                 new_path[i] = alt_node
                 
-                # Check if the path maintains chronological order
-                if self.is_chronologically_ordered(new_path):
-                    # Check if the path is valid in the graph
-                    if self.is_valid_path(new_path):
-                        neighbors.append(new_path)
+                if self.is_valid_path(new_path):
+                    neighbors.append(new_path)
         
         # Strategy 2: Swap non-required intermediate stops
         required_stop_names = set(required_stops)
@@ -222,22 +245,20 @@ class TabuSearch:
                     
                 new_path = path.copy()
                 new_path[i], new_path[j] = new_path[j], new_path[i]
-                
-                if self.is_chronologically_ordered(new_path) and self.is_valid_path(new_path):
+                if self.is_valid_path(new_path):
                     neighbors.append(new_path)
         
         # Strategy 3: Try to find shorter paths between consecutive required stops
         # This can produce more efficient solutions by removing unnecessary intermediate stops
         for i in range(len(path) - 1):
             if normalize_name(path[i]) in required_stop_names or normalize_name(path[i+1]) in required_stop_names:
-                # Try to find a shorter path between consecutive required stops
                 try:
                     shorter_path = nx.shortest_path(self.graph, path[i], path[i+1])
-                    if len(shorter_path) < 3:  # If it's just the direct connection, skip
-                        continue
+                    # if len(shorter_path) < 3:  # If it's just the direct connection, skip
+                    #     continue
                         
                     new_path = path[:i] + shorter_path + path[i+2:]
-                    if self.is_chronologically_ordered(new_path) and self.is_valid_path(new_path):
+                    if self.is_valid_path(new_path):
                         neighbors.append(new_path)
                 except nx.NetworkXNoPath:
                     continue
@@ -268,7 +289,7 @@ class TabuSearch:
         if not start_instances:
             raise ValueError(f"No valid instances found for start stop: {start}")
         start_instances.sort()
-        current_path = find_path_with_nodes(self.graph, stops, start)
+        current_path = find_path_with_nodes(self.graph, stops, start, departure_time)
         if not current_path:
             raise ValueError("No valid initial solution found with given time constraints.")
 
