@@ -37,7 +37,7 @@ class A_Star():
         lat1, lon1 = self.graph.nodes[node]["pos"]
 
         min_time = float('inf')
-        lat2, lon2 = self.graph.nodes[end_nodes]["pos"]
+        lat2, lon2 = self.graph.nodes[end_nodes[0]]["pos"]
         distance_km = self.haversine(lat1, lon1, lat2, lon2)
 
         estimated_time = (distance_km / avg_speed) * 60  
@@ -77,60 +77,112 @@ class A_Star():
                 if new_total_time < dist[neighbor]:
                     dist[neighbor] = new_total_time
                     pred[neighbor] = node
-                    # print(f'end={end}')
                     priority = new_total_time + self.heuristic(neighbor, end[0])  
                     heapq.heappush(pq, (priority, new_time, neighbor))
 
         return None
 
-    def a_star_with_line(self, start, end, arrival_time):
+    def a_star_with_line(self, graph, start, end, departure_time):
         """
         A* search algorithm that optimizes for minimum line changes,
-        and respects arrival time at the start node.
+        and respects arrival time at the start node while preventing cycles.
         """
         pq = []
-        start_time = convert_time(arrival_time)
-        heapq.heappush(pq, (0, time_to_minutes(start_time), start))  
-        dist = {node: float("inf") for node in self.graph.nodes}
-        dist[start] = 0
-        pred = {}  
-        visited = set()
+        start_time = convert_time(departure_time)
+        heapq.heappush(pq, (0, 0, start_time, start, frozenset([start])))  
+
+        best_costs = {}
+        best_costs[(start, 0)] = 0
+        
+        pred = {}
+        
+        current_lines = {start: graph.nodes[start]["line"]}
+        
+        expanded_states = set()
 
         while pq:
-            line_changes, curr_time, node = heapq.heappop(pq)
-
-            if node == end:
-                return self.reconstruct_path(pred, start, end)
-
-            if node in visited:
+            priority, line_count, curr_time, node, visited = heapq.heappop(pq)
+            
+            state_key = (node, line_count)
+            if state_key in expanded_states:
                 continue
+                
+            expanded_states.add(state_key)
+            
+            if node in end:
+                print(f"Found path to {node} with {line_count} line changes")
+                return self.reconstruct_paths(pred, start, node)
 
-            visited.add(node)
+            current_line = current_lines.get(node, graph.nodes[node]["line"])
 
-            for neighbor in self.graph.neighbors(node):
-                edge = self.graph[node][neighbor]
-                travel_time = edge["weight"]
-                neighbor_time = self.graph.nodes[neighbor]["time"]
+            for neighbor in graph.neighbors(node):
+                if neighbor in visited:
+                    continue
+                    
+                edge = graph[node][neighbor]
+                neighbor_time = graph.nodes[neighbor]["time"]
+                neighbor_line = graph.nodes[neighbor]["line"]
 
                 if neighbor_time < curr_time:
-                    continue
+                    continue  
+
+                new_line_count = line_count
+                if current_line != neighbor_line:
+                    new_line_count += 1
 
                 new_time = neighbor_time
-                line_change_penalty = 1 if self.graph.nodes[node]["line"] != self.graph.nodes[neighbor]["line"] else 0
-                new_line_changes = line_changes + line_change_penalty
-
-                new_total_time = curr_time + travel_time  # Adding travel time
-
-                if new_line_changes < dist[neighbor]:
-                    dist[neighbor] = new_line_changes
+                time_diff = (new_time - curr_time).total_seconds() / 60  # in minutes
+                
+                new_cost = time_diff
+                neighbor_state = (neighbor, new_line_count)
+                
+                if neighbor_state not in best_costs or new_cost < best_costs[neighbor_state]:
+                    best_costs[neighbor_state] = new_cost
+                    
                     pred[neighbor] = node
-                    f_cost = new_line_changes + self.heuristic(neighbor, end)  # f = g + h
-                    heapq.heappush(pq, (f_cost, new_time, neighbor))
+                    current_lines[neighbor] = neighbor_line
+                    
+                    estimated_changes = self.estimate_line_changes(neighbor, end[0], neighbor_line)
+                    priority = new_line_count + estimated_changes
+                    
+                    new_visited = frozenset(visited.union([neighbor]))
+                    
+                    heapq.heappush(pq, (priority, new_line_count, new_time, neighbor, new_visited))
+            
+            if len(pq) > 10000:
+                print(f"Warning: Queue size limit reached, pruning to 5000 most promising states")
+                pq = heapq.nsmallest(5000, pq)
+                heapq.heapify(pq)
 
-        return None 
+        return None
+        
+    def estimate_line_changes(self, node, end, current_line):
+        """
+        Estimate the minimum number of line changes needed to reach the end.
+        This is a simple heuristic - returns 1 if the lines are different, 0 otherwise.
+        A more sophisticated approach could use a precomputed line change database.
+        """
+        try:
+            end_line = self.graph.nodes[end]["line"]
+            if current_line != end_line:
+                return 1
+            return 0
+        except (KeyError, IndexError):
+            return 0
     
     def reconstruct_paths(self, pred, start, end):
-        if end not in pred:
+        """
+        Reconstructs the path from start to end node using the predecessor dictionary.
+        
+        Args:
+            pred: Dictionary mapping each node to its predecessor
+            start: Starting node
+            end: Ending node
+            
+        Returns:
+            The reconstructed path as a list of nodes, or an empty list if no path exists
+        """
+        if end not in pred and end != start:  
             print("No valid route found!")
             return []
 
@@ -139,13 +191,20 @@ class A_Star():
 
         while current != start:
             path.append(current)
+            print(f"current={current}, start={start}")
+            
             current = pred.get(current, None)
+            
             if current is None:
+                print("Error: Path reconstruction failed - missing predecessor")
+                return []
+                
+            if current in path:
+                print("Error: Cycle detected in path reconstruction")
                 return []
 
         path.append(start)
-        path.reverse()
-
+        path.reverse()  
         print("\nOptimal Route:")
         prev_line = None
         prev_time = None
@@ -168,22 +227,6 @@ class A_Star():
 
         print("\n")
         return path
-
-    # def reconstruct_paths(self, pred, start, end):
-    #     """Reconstructs the shortest path from `start` to `end` using the predecessor dictionary."""
-    #     path = []
-    #     node = end
-
-    #     while node is not None:
-    #         path.append(node)
-    #         node = pred.get(node)  # Move to the predecessor
-
-    #     path.reverse()  # Reverse to get the correct order from start → end
-
-    #     if path[0] != start:
-    #         return None  # No valid path found
-
-    #     return path
 
 
     def get_start_and_end_nodes(self, start, end, departure_time):
@@ -211,13 +254,13 @@ def run_a_star_time(start, end, departure_time):
 def run_a_star_line(start, end, arrival_time):
     G = read_with_loc_line_and_time(df_test)
     a_star = A_Star(G)
-    print(a_star.a_star_with_line(start, end, arrival_time))
+    start, end = a_star.get_start_and_end_nodes(start, end, arrival_time)
+    print(a_star.a_star_with_line(G, start, end, arrival_time))
     
 if __name__ == '__main__':
     G = read_with_loc_line_and_time(df_test)
     a_star = A_Star(G)
-    arg1, arg2, arg3 = 'Chłodna', 'Różanka', '05:29:00'
-    # arg1, arg2, arg3 = "Paprotna", "Broniewskiego", '20:00:00'
+    # arg1, arg2, arg3 = 'Chłodna', 'Różanka', '05:29:00'
+    arg1, arg2, arg3 = "Paprotna", "Broniewskiego", '20:00:00'
     start, end = a_star.get_start_and_end_nodes(arg1, arg2, arg3)
-    # print(start, end)
-    print(a_star.a_star_with_time(G, start, end, arg3))
+    (a_star.a_star_with_line(G, start, end, arg3))

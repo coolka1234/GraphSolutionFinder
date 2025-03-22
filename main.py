@@ -1,26 +1,7 @@
-from djikstra import run_djikstra, test_run_djikstra
-from a_star import run_a_star_time, run_a_star_line 
-from tabu_playground import run_tabu_time, run_tabu_line 
+from src.djikstra import run_djikstra, test_run_djikstra
+from src.a_star import run_a_star_time, run_a_star_line 
+from src.tabu_playground import run_tabu_time, run_tabu_line 
 def main():
-    print("Welcome to the Public Transport Route Planner!")
-    print("Please select an option:")
-    print("1. Djikstra")
-    print("2. A*")
-    print("3. Tabu Search")
-    print("4. Exit")
-    option=input("Enter your choice: ")
-    if option == '1':
-        djikstra()
-    elif option == '2':
-        tabu_search()
-    elif option == '3':
-        tabu_search()
-    elif option == '4':
-        exit()
-    else:
-        print("Invalid choice. Please try again.")
-        main()
-
     def tabu_search():
         start_stop = input("Podaj przystanek początkowy: ")
         
@@ -79,6 +60,25 @@ def main():
         else:
             print("Invalid criteria. Please try again.")
             a_star()
+         
+    print("Welcome to the Public Transport Route Planner!")
+    print("Please select an option:")
+    print("1. Djikstra")
+    print("2. A*")
+    print("3. Tabu Search")
+    print("4. Exit")
+    option=input("Enter your choice: ")
+    if option == '1':
+        djikstra()
+    elif option == '2':
+        a_star()
+    elif option == '3':
+        tabu_search()
+    elif option == '4':
+        exit()
+    else:
+        print("Invalid choice. Please try again.")
+        main()
 
         
     

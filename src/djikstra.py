@@ -4,7 +4,7 @@ import networkx as nx
 import heapq
 from collections import deque
 from heapq import heappop, heappush
-from process_csv import convert_time, read_with_loc_line_and_time
+from src.process_csv import convert_time, read_with_loc_line_and_time, df_test
 class Djikstra():
     def __init__(self, graph: nx.Graph):
         self.graph = graph
@@ -251,7 +251,6 @@ def test_run_djikstra():
     # TESTCASE 1: (Chłodna, Różanka)
 
 if __name__=='__main__':
-    from process_csv import df_test
     G = read_with_loc_line_and_time(df_test)
     djikstra = Djikstra(G)
     start, end= djikstra.get_start_and_end_nodes('Chłodna', 'Różanka', '5:29:00')

@@ -1,7 +1,7 @@
 import random
 import itertools
 import networkx as nx
-from process_csv import read_and_return_with_loc_line_and_time, read_with_loc_line_and_time, df_test
+from src.process_csv import read_and_return_with_loc_line_and_time, read_with_loc_line_and_time, df_test
 
 class TabuSearch:
     def __init__(self, graph, cost_type="weight", tabu_tenure=5, max_iterations=100):
