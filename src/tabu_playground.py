@@ -170,26 +170,95 @@ class TabuSearch:
             print(f"Error calculating transfers: {e}")
             return float('inf')
 
-    def generate_neighbors(self, path):
-        """Generates neighboring solutions by swapping two random stops, ensuring the new path is valid."""
+    def generate_neighbors(self, path, required_stops=None):
+        """
+        Generates neighboring solutions that:
+        1. Include all required stops
+        2. Maintain chronological order (later times come after earlier times)
+        3. Are valid paths in the graph (edges exist between consecutive nodes)
+        
+        Args:
+            path: Current path solution
+            required_stops: List of required stop names (without time information)
+            
+        Returns:
+            List of valid neighboring paths
+        """
+        if not required_stops:
+            # Extract the required stops from the path if not provided
+            required_stops = list(set(normalize_name(node) for node in path))
+        
         neighbors = []
         
-        for i, j in itertools.combinations(range(1, len(path) - 1), 2):
-            new_path = path[:]
+        # Strategy 1: Replace individual nodes with alternative instances of the same stop
+        for i in range(len(path)):
+            current_node = path[i]
+            current_stop = normalize_name(current_node)
             
-            new_path[i], new_path[j] = new_path[j], new_path[i]
-
-            valid = True
-            for k in range(len(new_path) - 1):
-                if new_path[k+1] not in self.graph[new_path[k]]:
-                    valid = False
-                    break
+            # Find alternative instances of the same stop
+            alt_instances = [
+                node for node in self.graph.nodes 
+                if normalize_name(node) == current_stop and node != current_node
+            ]
             
-            if valid:
-                neighbors.append(new_path)  
-
+            for alt_node in alt_instances:
+                new_path = path.copy()
+                new_path[i] = alt_node
+                
+                # Check if the path maintains chronological order
+                if self.is_chronologically_ordered(new_path):
+                    # Check if the path is valid in the graph
+                    if self.is_valid_path(new_path):
+                        neighbors.append(new_path)
+        
+        # Strategy 2: Swap non-required intermediate stops
+        required_stop_names = set(required_stops)
+        for i in range(1, len(path) - 1):
+            for j in range(i + 1, len(path) - 1):
+                # Skip swapping required stops to ensure they remain in the path
+                if (normalize_name(path[i]) in required_stop_names and 
+                    normalize_name(path[j]) in required_stop_names):
+                    continue
+                    
+                new_path = path.copy()
+                new_path[i], new_path[j] = new_path[j], new_path[i]
+                
+                if self.is_chronologically_ordered(new_path) and self.is_valid_path(new_path):
+                    neighbors.append(new_path)
+        
+        # Strategy 3: Try to find shorter paths between consecutive required stops
+        # This can produce more efficient solutions by removing unnecessary intermediate stops
+        for i in range(len(path) - 1):
+            if normalize_name(path[i]) in required_stop_names or normalize_name(path[i+1]) in required_stop_names:
+                # Try to find a shorter path between consecutive required stops
+                try:
+                    shorter_path = nx.shortest_path(self.graph, path[i], path[i+1])
+                    if len(shorter_path) < 3:  # If it's just the direct connection, skip
+                        continue
+                        
+                    new_path = path[:i] + shorter_path + path[i+2:]
+                    if self.is_chronologically_ordered(new_path) and self.is_valid_path(new_path):
+                        neighbors.append(new_path)
+                except nx.NetworkXNoPath:
+                    continue
+        
         return neighbors
-
+    
+    def is_chronologically_ordered(self, path):
+        """Check if a path maintains chronological ordering of nodes."""
+        for i in range(len(path) - 1):
+            time_i = convert_time(self.graph.nodes[path[i]]["time"])
+            time_j = convert_time(self.graph.nodes[path[i+1]]["time"])
+            if time_j <= time_i:
+                return False
+        return True
+    
+    def is_valid_path(self, path):
+        """Check if a path is valid in the graph (edges exist between consecutive nodes)."""
+        for i in range(len(path) - 1):
+            if path[i+1] not in self.graph[path[i]]:
+                return False
+        return True
 
     def tabu_search(self, start, stops, departure_time):
         """Main function to search for the best path."""
@@ -212,7 +281,8 @@ class TabuSearch:
         no_improve_count = 0
 
         while iteration < self.max_iterations:
-            neighbors = self.generate_neighbors(current_path)
+            # Pass the required stops to generate_neighbors
+            neighbors = self.generate_neighbors(current_path, required_stops=stops)
             neighbors = [n for n in neighbors if tuple(n) not in tabu_list]
 
             if not neighbors:
