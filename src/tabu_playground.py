@@ -131,7 +131,7 @@ def get_random_path(G, source, target, max_attempts=100):
         return None
 
 class TabuSearch:
-    def __init__(self, graph, cost_type="transfers", tabu_tenure=None, max_iterations=100, departure_time=None):
+    def __init__(self, graph, cost_type="transfers", tabu_tenure=None, max_iterations=100, departure_time=None, use_aspiration=True):
         """
         Tabu Search algorithm for finding an optimal path visiting required stops.
         
@@ -140,6 +140,7 @@ class TabuSearch:
         :param tabu_tenure: Number of iterations a move remains tabu
         :param max_iterations: Maximum number of iterations
         :param departure_time: User's desired departure time
+        :param use_aspiration: Whether to use aspiration criteria to override tabu status
         """
         self.graph: nx.DiGraph = graph
         self.cost_type = cost_type
@@ -147,6 +148,12 @@ class TabuSearch:
         self.tabu_tenure = tabu_tenure
         self.max_iterations = max_iterations
         self.departure_time = departure_time
+        self.use_aspiration = use_aspiration
+
+    def get_tabu_size_log(num_stops):
+        """Tabu size scales logarithmically for large graphs."""
+        import math
+        return max(3, int(math.log2(num_stops) * 5))
 
     def calculate_initial_waiting_time(self, path):
         """Calculate waiting time from desired departure time to first bus/train departure."""
@@ -171,7 +178,6 @@ class TabuSearch:
             
         initial_waiting_time = self.calculate_initial_waiting_time(path)
         
-        # Calculate path travel time
         try:
             path_travel_time = nx.path_weight(self.graph, path, weight='weight')
         except (nx.NetworkXNoPath, ValueError, TypeError) as e:
@@ -191,8 +197,7 @@ class TabuSearch:
             transfers = sum(1 for i in range(len(path)-2) 
                           if self.graph.nodes[path[i]]["line"] != self.graph.nodes[path[i+1]]["line"])
             
-            # Add a scaled waiting time penalty
-            waiting_time_penalty = self.calculate_initial_waiting_time(path) / 30  # Scale factor
+            waiting_time_penalty = self.calculate_initial_waiting_time(path) / 30  
             
             return transfers + waiting_time_penalty
         except (KeyError, TypeError) as e:
@@ -234,11 +239,9 @@ class TabuSearch:
                 if self.is_valid_path(new_path):
                     neighbors.append(new_path)
         
-        # Strategy 2: Swap non-required intermediate stops
         required_stop_names = set(required_stops)
         for i in range(1, len(path) - 1):
             for j in range(i + 1, len(path) - 1):
-                # Skip swapping required stops to ensure they remain in the path
                 if (normalize_name(path[i]) in required_stop_names and 
                     normalize_name(path[j]) in required_stop_names):
                     continue
@@ -248,14 +251,12 @@ class TabuSearch:
                 if self.is_valid_path(new_path):
                     neighbors.append(new_path)
         
-        # Strategy 3: Try to find shorter paths between consecutive required stops
-        # This can produce more efficient solutions by removing unnecessary intermediate stops
         for i in range(len(path) - 1):
             if normalize_name(path[i]) in required_stop_names or normalize_name(path[i+1]) in required_stop_names:
                 try:
                     shorter_path = nx.shortest_path(self.graph, path[i], path[i+1])
-                    # if len(shorter_path) < 3:  # If it's just the direct connection, skip
-                    #     continue
+                    if len(shorter_path) < 3:  
+                        continue
                         
                     new_path = path[:i] + shorter_path + path[i+2:]
                     if self.is_valid_path(new_path):
@@ -284,6 +285,7 @@ class TabuSearch:
     def tabu_search(self, start, stops, departure_time):
         """Main function to search for the best path."""
         self.departure_time = departure_time
+        self.tabu_tenure = self.get_tabu_size_log(len(stops)) if self.tabu_tenure is None else self.tabu_tenure
         
         start_instances = preprocess_stop_instances(self.graph, start, convert_time(departure_time))
         if not start_instances:
@@ -297,26 +299,53 @@ class TabuSearch:
         best_cost = self.cost(best_path)
 
         tabu_list = {}
+        aspiration_values = {}  
         iteration = 0
         no_improve_limit = 5
         no_improve_count = 0
+        
+        print(f"Initial solution cost: {best_cost}")
 
         while iteration < self.max_iterations:
-            # Pass the required stops to generate_neighbors
-            neighbors = self.generate_neighbors(current_path, required_stops=stops)
-            neighbors = [n for n in neighbors if tuple(n) not in tabu_list]
-
-            if not neighbors:
+            all_neighbors = self.generate_neighbors(current_path, required_stops=stops)
+            
+            tabu_neighbors = []
+            non_tabu_neighbors = []
+            
+            for neighbor in all_neighbors:
+                neighbor_tuple = tuple(neighbor)
+                if neighbor_tuple in tabu_list:
+                    neighbor_cost = self.cost(neighbor)
+                    
+                    move_key = self.get_move_structure(current_path, neighbor)
+                    if move_key not in aspiration_values or neighbor_cost < aspiration_values[move_key]:
+                        aspiration_values[move_key] = neighbor_cost
+                    
+                    if self.use_aspiration and neighbor_cost < best_cost:
+                        print(f"Aspiration applied! Tabu move accepted with cost: {neighbor_cost}")
+                        non_tabu_neighbors.append(neighbor)
+                    else:
+                        tabu_neighbors.append(neighbor)
+                else:
+                    non_tabu_neighbors.append(neighbor)
+            
+            if non_tabu_neighbors:
+                best_neighbor = min(non_tabu_neighbors, key=self.cost)
+            elif tabu_neighbors and iteration % 10 == 0:  
+                print("Using tabu move for diversification")
+                best_neighbor = min(tabu_neighbors, key=self.cost)
+            else:
                 print("No valid neighbors found.")
                 break
 
-            best_neighbor = min(neighbors, key=self.cost)
             best_neighbor_cost = self.cost(best_neighbor)
             print(f"Iteration {iteration}: Best neighbor cost: {best_neighbor_cost}") 
+            
             if best_neighbor_cost < best_cost:
                 best_path = best_neighbor
                 best_cost = best_neighbor_cost
-                no_improve_count = 0  
+                no_improve_count = 0
+                print(f"New best solution found! Cost: {best_cost}")
             else:
                 no_improve_count += 1  
 
@@ -324,17 +353,75 @@ class TabuSearch:
                 print("Stopping early due to stagnation.")
                 break  
 
-            if best_neighbor_cost < best_cost:
-                best_path = best_neighbor
-                best_cost = best_neighbor_cost
-
             current_path = best_neighbor
-            tabu_list[tuple(best_neighbor)] = iteration + (self.tabu_tenure or 0)
+            
+            move_key = self.get_move_structure(current_path, best_neighbor)
+            tabu_list[tuple(best_neighbor)] = iteration + self.tabu_tenure
+            
             tabu_list = {k: v for k, v in tabu_list.items() if v > iteration}
 
             iteration += 1
 
         return best_path, best_cost
+    
+    def get_move_structure(self, current_path, new_path):
+        """
+        Extract a representation of the move structure (what changed between paths).
+        This helps identify similar moves for aspiration criteria.
+        """
+        # proóbkowanie
+        differences = []
+        for i in range(min(len(current_path), len(new_path))):
+            if current_path[i] != new_path[i]:
+                differences.append((i, normalize_name(current_path[i]), normalize_name(new_path[i])))
+        
+        return tuple(differences)
+        
+    def diversify(self, current_path, tabu_list, required_stops, num_attempts=5):
+        """
+        Create a diversified solution when search stagnates.
+        """
+        for _ in range(num_attempts):
+            new_path = find_path_with_nodes(self.graph, required_stops, normalize_name(current_path[0]), self.departure_time)
+            
+            if new_path and tuple(new_path) not in tabu_list:
+                return new_path
+                
+        perturbed = self.perturb_solution(current_path, required_stops)
+        return perturbed
+    
+    def perturb_solution(self, path, required_stops):
+        """Apply a strong perturbation to the current solution to escape local optima."""
+        required_stop_names = set(normalize_name(s) for s in required_stops)
+        
+        replaceable_indices = [i for i in range(1, len(path)-1) 
+                             if normalize_name(path[i]) not in required_stop_names]
+        
+        if not replaceable_indices:
+            return path  
+            
+        num_to_replace = max(1, int(len(replaceable_indices) * 0.3))
+        indices_to_replace = random.sample(replaceable_indices, num_to_replace)
+        
+        new_path = path.copy()
+        
+        for idx in indices_to_replace:
+            prev_time = convert_time(self.graph.nodes[new_path[idx-1]]["time"])
+            next_time = convert_time(self.graph.nodes[new_path[idx+1]]["time"])
+            
+            potential_replacements = []
+            for node in self.graph.nodes:
+                node_time = convert_time(self.graph.nodes[node]["time"])
+                if prev_time < node_time < next_time:
+                    if new_path[idx-1] in self.graph.predecessors(node) and node in self.graph.predecessors(new_path[idx+1]):
+                        potential_replacements.append(node)
+            
+            if potential_replacements:
+                new_path[idx] = random.choice(potential_replacements)
+        
+        if self.is_valid_path(new_path):
+            return new_path
+        return path 
 
     def generate_random_solution(self, graph, start_stop, stops_list, arrival_time_at_start):
         """
@@ -376,7 +463,7 @@ class TabuSearch:
 
 if __name__ == '__main__':
     G = read_with_loc_line_and_time(df_test)
-    ts = TabuSearch(G, cost_type="weight", tabu_tenure=5, max_iterations=100)
+    ts = TabuSearch(G, cost_type="weight", tabu_tenure=5, max_iterations=100, use_aspiration=True)
 
     start_stop = "Chłodna"
     stops_list = [start_stop]+["Wiejska", "FAT", "Paprotna", "Chłodna"]
@@ -385,15 +472,3 @@ if __name__ == '__main__':
     best_path, best_cost = ts.tabu_search(start_stop, stops_list, arrival_time_at_start)
     print("Optimal Path:", best_path)
     print("Total Cost (Transfers or Time):", best_cost)
-    # nodes_starting_with_chlodna = get_nodes_starting_with(G, "Chłodna")
-    # print("Nodes starting with 'Chłodna':", nodes_starting_with_chlodna)
-    
-    # if len(nodes_starting_with_chlodna) >= 2:
-    #     nodeA = nodes_starting_with_chlodna[0]
-    #     nodeB = nodes_starting_with_chlodna[-1]
-    #     random_path = get_random_path(G, nodeA, nodeB)
-    #     if random_path:
-    #         print(f"Random path from {nodeA} to {nodeB}:")
-    #         print(random_path)
-    #     else:
-    #         print(f"No path found from {nodeA} to {nodeB}")
