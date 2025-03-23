@@ -1,8 +1,9 @@
 import random
+import sys
 import networkx as nx
 from datetime import datetime, timedelta
 
-from src.process_csv import read_with_loc_line_and_time, df_test
+from process_csv import read_with_loc_line_and_time, df_test
 
 def convert_time(time_str):
     """Converts time from string 'HH:MM' to datetime object."""
@@ -127,6 +128,28 @@ def get_random_path(G, source, target, max_attempts=100):
         return nx.shortest_path(G, source, target)
     except nx.NetworkXNoPath:
         return None
+
+def print_path(path):
+    prev_line = None
+    prev_time = None
+
+    for node in path:
+        stop, time_line = node.split("@")
+        time, line = time_line.split("_")
+
+        if prev_line is None or line != prev_line:
+            print(f"\n🚏 Take {line} from {stop} at {time}", end=" ")
+
+        if prev_time:
+            print(f"→ {stop} at {time}", end=" ")
+
+        if prev_line and line != prev_line:
+            print(f"(Switch to {line})")
+
+        prev_line = line
+        prev_time = time
+
+    print("\n")
 
 class TabuSearch:
     def __init__(self, graph, cost_type="transfers", tabu_tenure=None, max_iterations=100, departure_time=None, use_aspiration=True):
@@ -302,7 +325,7 @@ class TabuSearch:
         no_improve_limit = 5
         no_improve_count = 0
         
-        print(f"Initial solution cost: {best_cost}")
+        print(f"Initial solution cost: {best_cost}", file=sys.stderr)
 
         while iteration < self.max_iterations:
             all_neighbors = self.generate_neighbors(current_path, required_stops=stops)
@@ -337,7 +360,7 @@ class TabuSearch:
                 break
 
             best_neighbor_cost = self.cost(best_neighbor)
-            print(f"Iteration {iteration}: Best neighbor cost: {best_neighbor_cost}") 
+            print(f"Iteration {iteration}: Best neighbor cost: {best_neighbor_cost}", file=sys.stderr) 
             
             if best_neighbor_cost < best_cost:
                 best_path = best_neighbor
@@ -463,16 +486,16 @@ def run_tabu_time(start_stop, stops_list, arrival_time_at_start):
     ts = TabuSearch(G, cost_type="weight", tabu_tenure=5, max_iterations=100, use_aspiration=True)
 
     best_path, best_cost = ts.tabu_search(start_stop, stops_list, arrival_time_at_start)
-    print("Optimal Path:", best_path)
-    print("Total Cost (Transfers or Time):", best_cost)
+    print_path(best_path)
+    print("Total Cost (Transfers or Time):", best_cost, file=sys.stderr)
 
 def run_tabu_line(start_stop, stops_list, arrival_time_at_start):
     G = read_with_loc_line_and_time(df_test)
     ts = TabuSearch(G, cost_type="transfers", tabu_tenure=5, max_iterations=100, use_aspiration=True)
 
     best_path, best_cost = ts.tabu_search(start_stop, stops_list, arrival_time_at_start)
-    print("Optimal Path:", best_path)
-    print("Total Cost (Transfers or Time):", best_cost)
+    print_path(best_path)
+    print("Total Cost (Transfers or Time):", best_cost, file=sys.stderr)
 
 
 if __name__ == '__main__':
@@ -484,5 +507,5 @@ if __name__ == '__main__':
     arrival_time_at_start = "3:30:00"  
 
     best_path, best_cost = ts.tabu_search(start_stop, stops_list, arrival_time_at_start)
-    print("Optimal Path:", best_path)
+    print_path(best_path)
     print("Total Cost (Transfers or Time):", best_cost)

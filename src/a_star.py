@@ -1,4 +1,5 @@
-from src.process_csv import df_test, convert_time,read_with_loc_line_and_time
+import sys
+from process_csv import df_test, convert_time,read_with_loc_line_and_time
 import networkx as nx
 import heapq
 from math import radians, sin, cos, sqrt, atan2
@@ -226,6 +227,7 @@ class A_Star():
             prev_time = time
 
         print("\n")
+        self.print_to_err_diff(path)
         return path
 
 
@@ -244,6 +246,25 @@ class A_Star():
         else:
             end_nodes = [node for node in self.graph.nodes if node.startswith(f"{end}@")]
         return start_node, end_nodes
+
+    def print_to_err_diff(self, path):
+        """Prints the time difference between first and last stop in the path.
+
+        Args:
+            path (list[str]): Final optimal path, as a
+                list of stop names.
+        """
+        def extract_time(node):
+            return convert_time(node.split("@")[1].split("_")[0])
+        
+        time_diff = None
+
+        if (len(path) > 1):
+            time_diff=extract_time(path[-1])-extract_time(path[0])
+            print(f"Time difference between first and last stop: {time_diff}", file=sys.stderr)
+        else:
+            time_diff=convert_time(path[0].split("@")[1].split("_")[0])
+            print(f"Weight cost: {time_diff}", file=sys.stderr)
     
 def run_a_star_time(start, end, departure_time):
     G = read_with_loc_line_and_time(df_test)
