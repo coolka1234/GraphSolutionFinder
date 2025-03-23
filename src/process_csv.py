@@ -13,18 +13,35 @@ G=nx.Graph()
 def convert_time_from_weird(time_str):
     if time_str[0]=='2' and int(time_str[1])>3:
         return "0"+time_str[1:]
-    elif time_str[0]=='3' and int(time_str[1])>4:
-        return "1"+time_str[1:]
+    elif time_str[0]=='3' and int(time_str[1])==0:
+        return "06"+time_str[2:]
+    elif time_str[0]=='3' and int(time_str[1])==1:
+        return "07"+time_str[2:]
+    elif time_str[0]=='3' and int(time_str[1])==2:
+        return "08"+time_str[2:]
+    elif time_str[0]=='3' and int(time_str[1])==3:
+        return "09"+time_str[2:]
     elif time_str[0]=='4' and int(time_str[1])>4:
         return "2"+time_str[1:]
     elif time_str[0]=='5' and int(time_str[1])>4:
         return "3"+time_str[1:]
+    elif time_str[0]=='6' and int(time_str[1])>4:
+        return "4"+time_str[1:]
+    elif time_str[0]=='7' and int(time_str[1])>4:
+        return "5"+time_str[1:]
+    elif time_str[0]=='8' and int(time_str[1])>4:
+        return "6"+time_str[1:]
+    elif time_str[0]=='9' and int(time_str[1])>4:
+        return "7"+time_str[1:]
     else:
         return time_str
 
 
 
 def convert_time(time_str):
+    # print(time_str)
+    if type(time_str) == datetime:
+        return time_str
     return datetime.strptime(convert_time_from_weird(time_str), "%H:%M:%S")
 
 def read_with_loc_line_and_time(data_frame):

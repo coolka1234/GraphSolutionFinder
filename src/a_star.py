@@ -1,5 +1,5 @@
 import sys
-from src.process_csv import df_test, convert_time,read_with_loc_line_and_time
+from process_csv import df_test, convert_time,read_with_loc_line_and_time
 import networkx as nx
 import heapq
 from math import radians, sin, cos, sqrt, atan2
@@ -78,7 +78,7 @@ class A_Star():
                 if new_total_time < dist[neighbor]:
                     dist[neighbor] = new_total_time
                     pred[neighbor] = node
-                    priority = new_total_time + self.heuristic(neighbor, end[0])  
+                    priority = new_total_time + self.heuristic(neighbor, end)  
                     heapq.heappush(pq, (priority, new_time, neighbor))
 
         return None
@@ -171,7 +171,7 @@ class A_Star():
         except (KeyError, IndexError):
             return 0
     
-    def reconstruct_paths(self, pred, start, end):
+    def reconstruct_paths(self, pred, start, end, verbose=True):
         """
         Reconstructs the path from start to end node using the predecessor dictionary.
         
@@ -192,21 +192,25 @@ class A_Star():
 
         while current != start:
             path.append(current)
-            print(f"current={current}, start={start}")
+            if verbose:
+                print(f"current={current}, start={start}")
             
             current = pred.get(current, None)
             
             if current is None:
-                print("Error: Path reconstruction failed - missing predecessor")
+                if verbose:
+                    print("Error: Path reconstruction failed - missing predecessor")
                 return []
                 
             if current in path:
-                print("Error: Cycle detected in path reconstruction")
+                if verbose:
+                    print("Error: Cycle detected in path reconstruction")
                 return []
 
         path.append(start)
-        path.reverse()  
-        print("\nOptimal Route:")
+        path.reverse()
+        if verbose:
+            print("\nOptimal Route:")
         prev_line = None
         prev_time = None
 
@@ -215,19 +219,22 @@ class A_Star():
             time, line = time_line.split("_")
 
             if prev_line is None or line != prev_line:
-                print(f"\n🚏 Take {line} from {stop} at {time}", end=" ")
+                if verbose:
+                    print(f"\n🚏 Take {line} from {stop} at {time}", end=" ")
 
             if prev_time:
-                print(f"→ {stop} at {time}", end=" ")
+                if verbose:
+                    print(f"→ {stop} at {time}", end=" ")
 
             if prev_line and line != prev_line:
-                print(f"(Switch to {line})")
+                if verbose:
+                    print(f"(Switch to {line})")
 
             prev_line = line
             prev_time = time
-
-        print("\n")
-        self.print_to_err_diff(path)
+        if verbose:
+            print("\n")
+            self.print_to_err_diff(path)
         return path
 
 

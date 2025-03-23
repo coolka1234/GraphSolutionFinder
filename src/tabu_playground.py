@@ -1,9 +1,10 @@
+from os import path
 import random
 import sys
 import networkx as nx
 from datetime import datetime, timedelta
 
-from src.process_csv import read_with_loc_line_and_time, df_test
+from process_csv import read_with_loc_line_and_time, df_test
 
 def convert_time(time_str):
     """Converts time from string 'HH:MM' to datetime object."""
@@ -128,6 +129,29 @@ def get_random_path(G, source, target, max_attempts=100):
         return nx.shortest_path(G, source, target)
     except nx.NetworkXNoPath:
         return None
+
+def random_path_a_star(G, source, required_stops, departure_time):
+    from a_star import A_Star
+    algo=A_Star(G)
+    source.sort(key=lambda x: G.nodes[x]["time"]) 
+    start = None
+    for node in source:
+        if G.nodes[node]["time"] >= convert_time(departure_time):
+            start = node
+            break
+    path=[]
+    for stop in required_stops:
+        stop: list=get_nodes_starting_with(G, stop)
+        print(stop)
+        # stop=filter(lambda x: G.nodes[x]["time"] >= convert_time(departure_time), stop)
+        # print(f"path: {path}")
+        new_path=algo.a_star_with_time(G, start, stop, departure_time)
+        # print(f"new path found for:{start, stop, departure_time}, the path: {new_path}")
+        path+=new_path
+        start=path[-1]
+        departure_time=(G.nodes[start]["time"])
+    return path
+
 
 def print_path(path):
     prev_line = None
@@ -261,6 +285,7 @@ class TabuSearch:
                     neighbors.append(new_path)
         
         required_stop_names = set(required_stops)
+        # print(f"Required stops: {required_stop_names}")
         for i in range(1, len(path) - 1):
             for j in range(i + 1, len(path) - 1):
                 if (normalize_name(path[i]) in required_stop_names and 
@@ -312,7 +337,7 @@ class TabuSearch:
         if not start_instances:
             raise ValueError(f"No valid instances found for start stop: {start}")
         start_instances.sort()
-        current_path = find_path_with_nodes(self.graph, stops, start, departure_time)
+        current_path = random_path_a_star(self.graph, start_instances, stops,departure_time)
         if not current_path:
             raise ValueError("No valid initial solution found with given time constraints.")
 
@@ -370,9 +395,9 @@ class TabuSearch:
             else:
                 no_improve_count += 1  
 
-            if no_improve_count >= no_improve_limit:
-                print("Stopping early due to stagnation.")
-                break  
+            # if no_improve_count >= no_improve_limit:
+            #     print("Stopping early due to stagnation.")
+            #     break  
 
             current_path = best_neighbor
             
@@ -503,8 +528,8 @@ if __name__ == '__main__':
     ts = TabuSearch(G, cost_type="weight", tabu_tenure=5, max_iterations=100, use_aspiration=True)
 
     start_stop = "Chłodna"
-    stops_list = ["Wiejska", "FAT", "Chłodna"]
-    arrival_time_at_start = "3:30:00"  
+    stops_list = ["Wiejska", "FAT", "Paprotna", "Berenta", "Chłodna"]
+    arrival_time_at_start = "03:30:00"  
 
     best_path, best_cost = ts.tabu_search(start_stop, stops_list, arrival_time_at_start)
     print_path(best_path)
