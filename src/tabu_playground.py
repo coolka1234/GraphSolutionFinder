@@ -3,7 +3,7 @@ import sys
 import networkx as nx
 from datetime import datetime, timedelta
 
-from process_csv import read_with_loc_line_and_time, df_test
+from src.process_csv import read_with_loc_line_and_time, df_test
 
 def convert_time(time_str):
     """Converts time from string 'HH:MM' to datetime object."""

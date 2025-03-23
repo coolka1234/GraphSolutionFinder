@@ -6,7 +6,7 @@ import networkx as nx
 import heapq
 from collections import deque
 from heapq import heappop, heappush
-from process_csv import convert_time, read_with_loc_line_and_time, df_test
+from src.process_csv import convert_time, read_with_loc_line_and_time, df_test
 class Djikstra():
     def __init__(self, graph: nx.Graph):
         self.graph = graph
