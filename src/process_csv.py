@@ -6,18 +6,18 @@ import matplotlib.pyplot as plt
 from pyparsing import line
 
 df_connection_graph=pd.read_csv('data/connection_graph.csv', low_memory=False)
-df_test=df_connection_graph.head(9000)
+df_test=df_connection_graph.head(50000)
 G=nx.Graph()
 
 
 def convert_time_from_weird(time_str):
-    if time_str[0]=='2':
+    if time_str[0]=='2' and int(time_str[1])>3:
         return "0"+time_str[1:]
-    elif time_str[0]=='3':
+    elif time_str[0]=='3' and int(time_str[1])>4:
         return "1"+time_str[1:]
-    elif time_str[0]=='4':
+    elif time_str[0]=='4' and int(time_str[1])>4:
         return "2"+time_str[1:]
-    elif time_str[0]=='5':
+    elif time_str[0]=='5' and int(time_str[1])>4:
         return "3"+time_str[1:]
     else:
         return time_str
