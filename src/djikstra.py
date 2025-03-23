@@ -12,7 +12,7 @@ class Djikstra():
         self.graph = graph
         self.visited = set()
 
-    def dijkstra_with_time(self, start: str, end: str, departure_time: str):
+    def dijkstra_with_time(self, start: str, end, departure_time: str):
         G = self.graph
         start_time = convert_time(departure_time)
 
@@ -26,7 +26,9 @@ class Djikstra():
         while pq:
             total_time, curr_time, node = heapq.heappop(pq)
 
-            if node == end:
+            if node in end:
+                print(f"Found end node: {node}")
+                end= [node]
                 break
 
             for neighbor in G.neighbors(node):
@@ -48,12 +50,14 @@ class Djikstra():
         return self.reconstruct_paths(pred, start, end)
     
     def reconstruct_paths(self, pred, start, end):
-        if end not in pred:
+        # print(pred)
+        print(f"printing end {end}")
+        if [i for i in end if i in pred.values()]:
             print("No valid route found!")
             return []
-
         path = []
-        current = end
+
+        current = end[0]
 
         while current != start:
             path.append(current)
@@ -104,7 +108,7 @@ class Djikstra():
         if start_node is None:
             print(f"No available departures from {start} at this time.")
         else:
-            end_nodes = [node for node in self.graph.nodes if node.startswith(f"{end}@") and datetime.time(convert_time(self.graph.nodes[node]["time"])) > datetime.time(convert_time(self.graph.nodes[start_node]["time"]))]
+            end_nodes = [node for node in self.graph.nodes if node.startswith(f"{end}@") and datetime.time((self.graph.nodes[node]["time"])) >= datetime.time(convert_time(departure_time))]
         return start_node, end_nodes
     
     def print_to_err_diff(self, path):
@@ -139,7 +143,7 @@ def test_run_djikstra():
 if __name__=='__main__':
     G = read_with_loc_line_and_time(df_test)
     djikstra = Djikstra(G)
-    start, end= djikstra.get_start_and_end_nodes('Chłodna', 'Różanka', '8:29:00')
+    start, end= djikstra.get_start_and_end_nodes('Chłodna', 'Różanka', '10:29:00')
     print(start, end)
     ((djikstra.dijkstra_with_time(start, end, '10:29:00'), 'Chłodna', 'Różanka'))
     # TESTCASE 1: (Chłodna, Różanka)
