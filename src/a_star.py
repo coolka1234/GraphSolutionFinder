@@ -1,5 +1,6 @@
+from datetime import datetime
 import sys
-from process_csv import df_test, convert_time,read_with_loc_line_and_time
+from src.process_csv import df_test, convert_time,read_with_loc_line_and_time
 import networkx as nx
 import heapq
 from math import radians, sin, cos, sqrt, atan2
@@ -275,15 +276,27 @@ class A_Star():
     
 def run_a_star_time(start, end, departure_time):
     G = read_with_loc_line_and_time(df_test)
+    time_now=datetime.now()
+    print(f"Start time: {time_now}")
     a_star = A_Star(G)
     start, end = a_star.get_start_and_end_nodes(start, end, departure_time)
-    print(a_star.a_star_with_time(G, start, end, departure_time))
+    a_star.a_star_with_time(G, start, end, departure_time)
+    time_after=datetime.now()
+    print(f"End time: {time_after}")
+    print(f"Time taken: {time_after-time_now}")
+    
 
 def run_a_star_line(start, end, arrival_time):
     G = read_with_loc_line_and_time(df_test)
+    time_now=datetime.now()
+    print(f"Start time: {time_now}")
     a_star = A_Star(G)
     start, end = a_star.get_start_and_end_nodes(start, end, arrival_time)
-    print(a_star.a_star_with_line(G, start, end, arrival_time))
+    a_star.a_star_with_line(G, start, end, arrival_time)
+    time_after=datetime.now()
+    print(f"End time: {time_after}")
+    print(f"Time taken: {time_after-time_now}")
+
     
 if __name__ == '__main__':
     G = read_with_loc_line_and_time(df_test)

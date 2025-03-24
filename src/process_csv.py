@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from pyparsing import line
 
 df_connection_graph=pd.read_csv('data/connection_graph.csv', low_memory=False)
-df_test=df_connection_graph
+df_test=df_connection_graph.head(15000)
 G=nx.Graph()
 
 
@@ -79,8 +79,17 @@ def read_with_loc_line_and_time(data_frame):
             time2, node2 = times[i + 1]
             wait_time = (time2 - time1).seconds // 60
             G.add_edge(node1, node2, weight=wait_time, type="transfer")
-
+    add_connections_between_the_same_stop(G)
     return G
+
+def add_connections_between_the_same_stop(G: nx.DiGraph):
+    already_added=set()
+    for nodes in G.nodes():
+        if nodes not in already_added:
+            for nodes2 in G.nodes():
+                if nodes!=nodes2 and G.nodes[nodes]['stop']==G.nodes[nodes2]['stop']:
+                    G.add_edge(nodes, nodes2, weight=0, type="transfer")
+            already_added.add(nodes)
 
 def read_and_return_with_loc_line_and_time(data_frame):
     G = nx.DiGraph()

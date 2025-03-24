@@ -96,12 +96,12 @@ class Djikstra():
         start_nodes = [node for node in self.graph.nodes if node.startswith(f"{start}@")]
         start_nodes.sort(key=lambda x: datetime.time(self.graph.nodes[x]["time"]))  
 
-        print(f"Available departures from {start}: {', '.join([node.split('@')[1].split('_')[0] for node in start_nodes])}")
-        print(f"Departure time: {datetime.time(convert_time(departure_time))}")
+        # print(f"Available departures from {start}: {', '.join([node.split('@')[1].split('_')[0] for node in start_nodes])}")
+        # print(f"Departure time: {datetime.time(convert_time(departure_time))}")
         start_node = None
         for node in start_nodes:
             if datetime.time(self.graph.nodes[node]["time"]) >= datetime.time(convert_time(departure_time)):
-                print(f"Starting from {start} at {datetime.time(self.graph.nodes[node]['time'])}, because it's the first available departure from {start} after {datetime.time(convert_time(departure_time))}.")
+                # print(f"Starting from {start} at {datetime.time(self.graph.nodes[node]['time'])}, because it's the first available departure from {start} after {datetime.time(convert_time(departure_time))}.")
                 start_node = node
                 break
 
@@ -132,9 +132,14 @@ class Djikstra():
 
 def run_djikstra(start, end, departure_time):
     G = read_with_loc_line_and_time(df_test)
+    time_now = datetime.now()
+    print(f"Starting at {time_now}")
     djikstra = Djikstra(G)
     start, end = djikstra.get_start_and_end_nodes(start, end, departure_time)
     djikstra.dijkstra_with_time(start, end, departure_time)
+    time_after = datetime.now()
+    print(f"Finished at {time_after}")
+    print(f"Total time: {time_after - time_now}")
 
 def test_run_djikstra():
     run_djikstra('Chłodna', 'Różanka', '5:29:00')

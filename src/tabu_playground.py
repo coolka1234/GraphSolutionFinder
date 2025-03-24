@@ -1,10 +1,11 @@
 from os import path
 import random
 import sys
+from matplotlib.pylab import f
 import networkx as nx
 from datetime import datetime, timedelta
 
-from process_csv import read_with_loc_line_and_time, df_test
+from src.process_csv import read_with_loc_line_and_time, df_test
 
 def convert_time(time_str):
     """Converts time from string 'HH:MM' to datetime object."""
@@ -508,19 +509,29 @@ class TabuSearch:
 
 def run_tabu_time(start_stop, stops_list, arrival_time_at_start):
     G = read_with_loc_line_and_time(df_test)
+    time_now=datetime.now()
+    print(f"Starting at {time_now}")
     ts = TabuSearch(G, cost_type="weight", tabu_tenure=5, max_iterations=100, use_aspiration=True)
 
     best_path, best_cost = ts.tabu_search(start_stop, stops_list, arrival_time_at_start)
     print_path(best_path)
     print("Total Cost (Transfers or Time):", best_cost, file=sys.stderr)
+    time_after=datetime.now()
+    print(f"Finished at {time_after}")
+    print(f"Total time: {time_after - time_now}")
 
 def run_tabu_line(start_stop, stops_list, arrival_time_at_start):
     G = read_with_loc_line_and_time(df_test)
+    time_now=datetime.now()
+    print(f"Starting at {time_now}")
     ts = TabuSearch(G, cost_type="transfers", tabu_tenure=5, max_iterations=100, use_aspiration=True)
 
     best_path, best_cost = ts.tabu_search(start_stop, stops_list, arrival_time_at_start)
     print_path(best_path)
     print("Total Cost (Transfers or Time):", best_cost, file=sys.stderr)
+    time_after=datetime.now()
+    print(f"Finished at {time_after}")
+    print(f"Total time: {time_after - time_now}")
 
 
 if __name__ == '__main__':
