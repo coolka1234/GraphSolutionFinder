@@ -16,6 +16,11 @@ class A_Star():
     def heuristic_optimal(self, node, target):
         return nx.shortest_path_length(self.graph, source=node, target=target, weight='weight')
     
+    def heuristic_euclidean(self, node, target):
+        pos1 = self.graph.nodes[node]["pos"]
+        pos2 = self.graph.nodes[target]["pos"]
+        return self.euclidean_distance(pos1, pos2)
+    
 
     def haversine(self, lat1, lon1, lat2, lon2):
         """Calculate the great-circle distance (in km) between two points using latitude & longitude."""
@@ -63,7 +68,7 @@ class A_Star():
             total_time, curr_time, node = heapq.heappop(pq)
 
             if node in end:
-                return self.reconstruct_paths(pred, start, node)
+                return self.reconstruct_paths(pred, start, node, verbose=False)
 
             for neighbor in graph.neighbors(node):
                 edge = graph[node][neighbor]
@@ -113,7 +118,7 @@ class A_Star():
             
             if node in end:
                 print(f"Found path to {node} with {line_count} line changes")
-                return self.reconstruct_paths(pred, start, node)
+                return self.reconstruct_paths(pred, start, node, verbose=False)
 
             current_line = current_lines.get(node, graph.nodes[node]["line"])
 
@@ -210,8 +215,7 @@ class A_Star():
 
         path.append(start)
         path.reverse()
-        if verbose:
-            print("\nOptimal Route:")
+        print("\nOptimal Route:")
         prev_line = None
         prev_time = None
 
@@ -220,22 +224,18 @@ class A_Star():
             time, line = time_line.split("_")
 
             if prev_line is None or line != prev_line:
-                if verbose:
-                    print(f"\n🚏 Take {line} from {stop} at {time}", end=" ")
+                print(f"\n🚏 Take {line} from {stop} at {time}", end=" ")
 
             if prev_time:
-                if verbose:
-                    print(f"→ {stop} at {time}", end=" ")
+                print(f"→ {stop} at {time}", end=" ")
 
             if prev_line and line != prev_line:
-                if verbose:
-                    print(f"(Switch to {line})")
+                print(f"(Switch to {line})")
 
             prev_line = line
             prev_time = time
-        if verbose:
-            print("\n")
-            self.print_to_err_diff(path)
+        print("\n")
+        self.print_to_err_diff(path)
         return path
 
 

@@ -143,7 +143,7 @@ def random_path_a_star(G, source, required_stops, departure_time):
     path=[]
     for stop in required_stops:
         stop: list=get_nodes_starting_with(G, stop)
-        print(stop)
+        # print(stop)
         # stop=filter(lambda x: G.nodes[x]["time"] >= convert_time(departure_time), stop)
         # print(f"path: {path}")
         new_path=algo.a_star_with_time(G, start, stop, departure_time)
