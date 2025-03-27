@@ -21,6 +21,11 @@ class A_Star():
         pos2 = self.graph.nodes[target]["pos"]
         return self.euclidean_distance(pos1, pos2)
     
+    def euclidean_distance(self, pos1, pos2):
+        x1, y1 = pos1
+        x2, y2 = pos2
+        return sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+    
 
     def haversine(self, lat1, lon1, lat2, lon2):
         """Calculate the great-circle distance (in km) between two points using latitude & longitude."""

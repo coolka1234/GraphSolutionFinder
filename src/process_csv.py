@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from pyparsing import line
 
 df_connection_graph=pd.read_csv('data/connection_graph.csv', low_memory=False)
-df_test=df_connection_graph.head(800000)
+df_test=df_connection_graph.head(150000)
 G=nx.Graph()
 
 
